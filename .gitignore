@@ -1,0 +1,76 @@
+# ==============================
+# Flutter / Dart
+# ==============================
+.dart_tool/
+.packages
+.pub/
+build/
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
+.DS_Store
+
+# ==============================
+# Android
+# ==============================
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# Keystore (DO NOT COMMIT)
+*.jks
+*.keystore
+key.properties
+
+# ==============================
+# iOS
+# ==============================
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Pods/
+ios/.symlinks/
+ios/Runner.xcworkspace/
+ios/build/
+DerivedData/
+
+# ==============================
+# Web
+# ==============================
+build/web/
+
+# ==============================
+# IDE / Editor
+# ==============================
+.vscode/
+.idea/
+*.iml
+
+# ==============================
+# Coverage / Testing
+# ==============================
+coverage/
+
+# ==============================
+# Environment / Secrets
+# ==============================
+.env
+.env.*
+
+# ==============================
+# Misc
+# ==============================
+*.lock
+
+# ==============================
+# Optional (uncomment if needed)
+# ==============================
+# macOS
+# *.DS_Store
+
+# Linux
+# *~
+
+# Windows
+# Thumbs.db
