@@ -5,6 +5,8 @@
 .packages
 .pub/
 build/
+.flutter-plugins
+.flutter-plugins-dependencies
 
 # Logs & temp
 *.log
