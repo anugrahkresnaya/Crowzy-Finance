@@ -46,6 +46,10 @@ The system uses a hybrid architecture:
 5. Wishlist
    - Track savings goals
 
+6. AI Financial Analyzer
+   - Read-only insights and Q&A over the user's own transaction data
+   - See "AI Financial Analyzer" section below for scope details
+
 ---
 
 ## Data Model
@@ -151,6 +155,23 @@ Conflict strategy:
 
 ---
 
+## AI Financial Analyzer
+
+### Scope (MVP)
+Read-only insights and Q&A, not an agent that takes actions.
+
+- Passive insights: short summaries generated from aggregated transaction data (e.g., "you spent 30% more on Food this month"), shown as a summary card.
+- Chat-style Q&A: user can ask questions about their own data (e.g., "how much did I spend on transport last week?").
+
+Out of scope for MVP: the assistant creating/editing categories, transactions, or wishlist entries, flagging anomalies automatically, or suggesting budget targets. These may be revisited later as explicitly agentic features once the read-only version is validated.
+
+### Architecture
+- Aggregate/summarize transaction data client-side or in a Supabase Edge Function — never send raw transaction rows to the LLM, only the summary/aggregate.
+- Call the LLM from the Edge Function (not directly from the Flutter app) to keep API keys server-side.
+- Consistent with existing Performance Rules: minimize Supabase egress, avoid full-table fetches.
+
+---
+
 ## Future Enhancements
 
 - Charts (monthly analytics)
@@ -163,5 +184,5 @@ Conflict strategy:
 ## Non-Goals (for now)
 
 - No complex budgeting system
-- No AI predictions
+- No agentic AI actions (creating/editing data, auto-flagging, budget suggestions) — see AI Financial Analyzer scope above
 - No multi-currency support
