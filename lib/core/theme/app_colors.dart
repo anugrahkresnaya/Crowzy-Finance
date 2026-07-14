@@ -21,6 +21,9 @@ class AppColors {
   static const Color gradientMid = Color(0xFF2E1065);
   static const Color gradientEnd = Color(0xFF7C3AED);
 
+  // Balance card glass blobs — third accent alongside seedLight/gradientMid
+  static const Color blobAccent = Color(0xFFD946EF);
+
   // Semantic
   static const Color error = Color(0xFFEF4444);
   static const Color income = Color(0xFF34D399);
