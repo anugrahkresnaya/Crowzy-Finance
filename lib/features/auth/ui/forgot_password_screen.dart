@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/auth_background.dart';
 import '../providers/auth_provider.dart';
 import 'reset_password_screen.dart';
 
@@ -53,7 +56,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Forgot Password')),
       body: SafeArea(
-        child: Center(
+        child: AuthBackground(
+          child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Form(
@@ -95,16 +99,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   ],
                   const SizedBox(height: 12),
                   OutlinedButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ResetPasswordScreen(),
-                      ),
-                    ),
+                    onPressed: () => pushSlide(context, const ResetPasswordScreen()),
                     child: const Text('I Have My Reset Link'),
                   ),
                 ],
-              ),
+              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.04, end: 0),
             ),
+          ),
           ),
         ),
       ),
