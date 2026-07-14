@@ -1,0 +1,141 @@
+import 'package:hive/hive.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../data/models/category_model.dart';
+import '../../data/models/transaction_model.dart';
+
+class SyncService {
+  SyncService(
+    this._client,
+    this._categoryBox,
+    this._transactionBox,
+    this._syncMetaBox,
+  );
+
+  final SupabaseClient _client;
+  final Box<Map> _categoryBox;
+  final Box<Map> _transactionBox;
+  final Box _syncMetaBox;
+
+  static const _pageSize = 500;
+
+  Future<void> sync(String userId) async {
+    await _pushCategories();
+    await _pushTransactions();
+    await _pullCategories(userId);
+    await _pullTransactions(userId);
+  }
+
+  Future<void> _pushCategories() async {
+    final dirty = _categoryBox.values
+        .map((raw) => CategoryModel.fromJson(Map<String, dynamic>.from(raw)))
+        .where((category) => !category.isSynced)
+        .toList();
+    if (dirty.isEmpty) return;
+
+    await _client.from('categories').upsert(dirty.map((c) => c.toSupabaseRow()).toList());
+    for (final category in dirty) {
+      await _categoryBox.put(category.id, category.copyWith(isSynced: true).toJson());
+    }
+  }
+
+  Future<void> _pushTransactions() async {
+    final dirty = _transactionBox.values
+        .map((raw) => TransactionModel.fromJson(Map<String, dynamic>.from(raw)))
+        .where((transaction) => !transaction.isSynced)
+        .toList();
+    if (dirty.isEmpty) return;
+
+    await _client.from('transactions').upsert(dirty.map((t) => t.toSupabaseRow()).toList());
+    for (final transaction in dirty) {
+      await _transactionBox.put(transaction.id, transaction.copyWith(isSynced: true).toJson());
+    }
+  }
+
+  Future<void> _pullCategories(String userId) async {
+    final since = _lastSyncedAt('categories', userId);
+    var offset = 0;
+    DateTime? newestSeen;
+
+    while (true) {
+      final rows = await _client
+          .from('categories')
+          .select()
+          .or('user_id.eq.$userId,user_id.is.null')
+          .gt('updated_at', since.toIso8601String())
+          .order('updated_at')
+          .range(offset, offset + _pageSize - 1);
+      if (rows.isEmpty) break;
+
+      for (final row in rows) {
+        final remote =
+            CategoryModel.fromJson(Map<String, dynamic>.from(row)).copyWith(isSynced: true);
+        await _mergeCategory(remote);
+        if (newestSeen == null || remote.updatedAt.isAfter(newestSeen)) {
+          newestSeen = remote.updatedAt;
+        }
+      }
+      if (rows.length < _pageSize) break;
+      offset += _pageSize;
+    }
+
+    if (newestSeen != null) await _setLastSyncedAt('categories', userId, newestSeen);
+  }
+
+  Future<void> _pullTransactions(String userId) async {
+    final since = _lastSyncedAt('transactions', userId);
+    var offset = 0;
+    DateTime? newestSeen;
+
+    while (true) {
+      final rows = await _client
+          .from('transactions')
+          .select()
+          .eq('user_id', userId)
+          .gt('updated_at', since.toIso8601String())
+          .order('updated_at')
+          .range(offset, offset + _pageSize - 1);
+      if (rows.isEmpty) break;
+
+      for (final row in rows) {
+        final remote =
+            TransactionModel.fromJson(Map<String, dynamic>.from(row)).copyWith(isSynced: true);
+        await _mergeTransaction(remote);
+        if (newestSeen == null || remote.updatedAt.isAfter(newestSeen)) {
+          newestSeen = remote.updatedAt;
+        }
+      }
+      if (rows.length < _pageSize) break;
+      offset += _pageSize;
+    }
+
+    if (newestSeen != null) await _setLastSyncedAt('transactions', userId, newestSeen);
+  }
+
+  Future<void> _mergeCategory(CategoryModel remote) async {
+    final raw = _categoryBox.get(remote.id);
+    if (raw != null) {
+      final local = CategoryModel.fromJson(Map<String, dynamic>.from(raw));
+      if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
+    }
+    await _categoryBox.put(remote.id, remote.toJson());
+  }
+
+  Future<void> _mergeTransaction(TransactionModel remote) async {
+    final raw = _transactionBox.get(remote.id);
+    if (raw != null) {
+      final local = TransactionModel.fromJson(Map<String, dynamic>.from(raw));
+      if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
+    }
+    await _transactionBox.put(remote.id, remote.toJson());
+  }
+
+  DateTime _lastSyncedAt(String key, String userId) {
+    final iso = _syncMetaBox.get('last_synced_${key}_$userId') as String?;
+    return iso != null ? DateTime.parse(iso) : DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  Future<void> _setLastSyncedAt(String key, String userId, DateTime value) async {
+    await _syncMetaBox.put('last_synced_${key}_$userId', value.toIso8601String());
+  }
+}
