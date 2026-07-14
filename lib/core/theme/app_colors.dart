@@ -16,4 +16,6 @@ class AppColors {
 
   // Semantic
   static const Color error = Color(0xFFDC3545);
+  static const Color income = Color(0xFF10B981);
+  static const Color expense = Color(0xFFF97316);
 }
