@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/constants/hive_constants.dart';
 import 'core/constants/supabase_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/ui/auth_gate.dart';
@@ -11,6 +12,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Hive.initFlutter();
+  await Hive.openBox<Map>(HiveConstants.categoriesBox);
+  await Hive.openBox<Map>(HiveConstants.transactionsBox);
+  await Hive.openBox(HiveConstants.syncMetaBox);
 
   await Supabase.initialize(
     url: SupabaseConstants.url,
