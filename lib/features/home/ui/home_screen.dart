@@ -11,6 +11,9 @@ import '../../transactions/providers/transaction_provider.dart';
 import '../../transactions/ui/add_edit_transaction_screen.dart';
 import '../../transactions/ui/transaction_list_screen.dart';
 import '../../transactions/ui/widgets/transaction_tile.dart';
+import '../../wishlist/providers/wishlist_provider.dart';
+import '../../wishlist/ui/wishlist_list_screen.dart';
+import '../../wishlist/ui/widgets/wishlist_tile.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -21,6 +24,7 @@ class HomeScreen extends ConsumerWidget {
     final allTimeBalance = ref.watch(allTimeBalanceProvider);
     final thisMonthBalance = ref.watch(thisMonthBalanceProvider);
     final recentTransactions = ref.watch(recentTransactionsProvider);
+    final activeGoals = ref.watch(activeWishlistGoalsProvider);
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final categoryById = {for (final c in categories) c.id: c};
 
@@ -80,6 +84,35 @@ class HomeScreen extends ConsumerWidget {
                       transaction: transaction,
                       category: categoryById[transaction.categoryId],
                     )
+                        .animate()
+                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+                        .slideX(begin: 0.04, end: 0),
+                  );
+                },
+              ),
+            const SizedBox(height: 28),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Goals', style: Theme.of(context).textTheme.titleMedium),
+                TextButton(
+                  onPressed: () => pushSlide(context, const WishlistListScreen()),
+                  child: const Text('See all'),
+                ),
+              ],
+            ),
+            if (activeGoals.isEmpty)
+              const EmptyState(
+                icon: Icons.savings_outlined,
+                message: 'No goals yet — tap "See all" to add one',
+              )
+            else
+              ...activeGoals.take(3).indexed.map(
+                (entry) {
+                  final (index, goal) = entry;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: WishlistTile(goal: goal)
                         .animate()
                         .fadeIn(delay: (60 * index).ms, duration: 300.ms)
                         .slideX(begin: 0.04, end: 0),

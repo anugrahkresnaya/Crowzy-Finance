@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/categories/providers/category_provider.dart';
 import '../../features/transactions/providers/transaction_provider.dart';
+import '../../features/wishlist/providers/wishlist_provider.dart';
 import '../providers/supabase_provider.dart';
 import 'sync_service.dart';
 
@@ -14,6 +15,7 @@ SyncService syncService(Ref ref) {
     ref.watch(supabaseClientProvider),
     ref.watch(categoryBoxProvider),
     ref.watch(transactionBoxProvider),
+    ref.watch(wishlistBoxProvider),
     ref.watch(syncMetaBoxProvider),
   );
 }
@@ -31,6 +33,7 @@ class SyncController extends _$SyncController {
       await ref.read(syncServiceProvider).sync(userId);
       ref.invalidate(categoryListProvider);
       ref.invalidate(transactionListProvider);
+      ref.invalidate(wishlistListProvider);
     } catch (_) {
       // Non-fatal: local data stays usable offline-first; retried on the next
       // app start / resume / write.
