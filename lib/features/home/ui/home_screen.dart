@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/summary_card.dart';
+import '../../../core/widgets/gradient_balance_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
-import '../../categories/ui/category_list_screen.dart';
-import '../../reports/ui/monthly_report_screen.dart';
 import '../../transactions/providers/transaction_provider.dart';
 import '../../transactions/ui/add_edit_transaction_screen.dart';
 import '../../transactions/ui/transaction_list_screen.dart';
@@ -30,27 +29,14 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Crowzy Finance'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bar_chart_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MonthlyReportScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.category_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CategoryListScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Log out',
             onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddEditTransactionScreen()),
-        ),
+        onPressed: () => pushSlide(context, const AddEditTransactionScreen()),
         child: const Icon(Icons.add),
       ),
       body: SafeArea(
@@ -58,38 +44,23 @@ class HomeScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Logged in as ${user?.email ?? 'unknown'}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: SummaryCard(
-                    label: 'All-time Balance',
-                    amount: allTimeBalance,
-                    color: allTimeBalance >= 0 ? AppColors.income : AppColors.expense,
+              'Welcome back, ${user?.email?.split('@').first ?? 'there'}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SummaryCard(
-                    label: 'This Month',
-                    amount: thisMonthBalance,
-                    color: thisMonthBalance >= 0 ? AppColors.income : AppColors.expense,
-                  ),
-                ),
-              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            GradientBalanceCard(
+              allTimeBalance: allTimeBalance,
+              thisMonthBalance: thisMonthBalance,
+            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
+            const SizedBox(height: 28),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Recent Transactions', style: Theme.of(context).textTheme.titleMedium),
                 TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const TransactionListScreen()),
-                  ),
+                  onPressed: () => pushSlide(context, const TransactionListScreen()),
                   child: const Text('See all'),
                 ),
               ],
@@ -100,11 +71,20 @@ class HomeScreen extends ConsumerWidget {
                 message: 'No transactions yet — tap + to add one',
               )
             else
-              ...recentTransactions.map(
-                (transaction) => TransactionTile(
-                  transaction: transaction,
-                  category: categoryById[transaction.categoryId],
-                ),
+              ...recentTransactions.indexed.map(
+                (entry) {
+                  final (index, transaction) = entry;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: TransactionTile(
+                      transaction: transaction,
+                      category: categoryById[transaction.categoryId],
+                    )
+                        .animate()
+                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+                        .slideX(begin: 0.04, end: 0),
+                  );
+                },
               ),
           ],
         ),

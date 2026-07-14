@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/sync/sync_provider.dart';
-import '../../home/ui/home_screen.dart';
+import '../../../core/widgets/root_shell.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 
@@ -48,7 +48,7 @@ class _AuthGateState extends ConsumerState<AuthGate> with WidgetsBindingObserver
     });
 
     return authState.when(
-      data: (state) => state.session != null ? const HomeScreen() : const LoginScreen(),
+      data: (state) => state.session != null ? const RootShell() : const LoginScreen(),
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/confirm_dialog.dart';
 import '../../../core/utils/icon_mapper.dart';
 import '../../../core/widgets/empty_state.dart';
@@ -52,11 +54,7 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen>
           final type = _tabController.index == 0
               ? TransactionType.income
               : TransactionType.expense;
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => AddEditCategoryScreen(initialType: type),
-            ),
-          );
+          pushSlide(context, AddEditCategoryScreen(initialType: type));
         },
         child: const Icon(Icons.add),
       ),
@@ -96,6 +94,7 @@ class _CategoryTab extends ConsumerWidget {
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.all(16),
       itemCount: categories.length,
       itemBuilder: (context, index) {
         final category = categories[index];
@@ -103,43 +102,58 @@ class _CategoryTab extends ConsumerWidget {
             ? AppColors.income
             : AppColors.expense;
 
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.15),
-            child: Icon(IconMapper.iconFor(category.icon), color: color),
-          ),
-          title: Text(category.name),
-          trailing: category.isGlobal
-              ? null
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => AddEditCategoryScreen(category: category),
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () async {
-                        final confirmed = await confirmDialog(
-                          context,
-                          title: 'Delete category?',
-                          message: 'Delete "${category.name}"? This cannot be undone.',
-                        );
-                        if (confirmed) {
-                          ref
-                              .read(categoryListProvider.notifier)
-                              .deleteCustomCategory(category.id);
-                        }
-                      },
-                    ),
-                  ],
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: ListTile(
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: color.withValues(alpha: 0.16),
+                  ),
+                  child: Icon(IconMapper.iconFor(category.icon), color: color),
                 ),
-        );
+                title: Text(
+                  category.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                trailing: category.isGlobal
+                    ? null
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            onPressed: () => pushSlide(
+                              context,
+                              AddEditCategoryScreen(category: category),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () async {
+                              final confirmed = await confirmDialog(
+                                context,
+                                title: 'Delete category?',
+                                message: 'Delete "${category.name}"? This cannot be undone.',
+                              );
+                              if (confirmed) {
+                                ref
+                                    .read(categoryListProvider.notifier)
+                                    .deleteCustomCategory(category.id);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ).animate().fadeIn(delay: (40 * index).ms, duration: 250.ms).slideX(begin: 0.03, end: 0);
       },
     );
   }

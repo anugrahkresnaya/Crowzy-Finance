@@ -1,7 +1,9 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/confirm_dialog.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
@@ -81,16 +83,14 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AddEditTransactionScreen()),
-        ),
+        onPressed: () => pushSlide(context, const AddEditTransactionScreen()),
         child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
           if (_dateRange != null || _categoryId != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Wrap(
                 spacing: 8,
                 children: [
@@ -142,19 +142,24 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 }
 
                 return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final transaction = filtered[index];
-                    return TransactionTile(
-                      transaction: transaction,
-                      category: categoryById[transaction.categoryId],
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AddEditTransactionScreen(transaction: transaction),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: TransactionTile(
+                        transaction: transaction,
+                        category: categoryById[transaction.categoryId],
+                        onTap: () => pushSlide(
+                          context,
+                          AddEditTransactionScreen(transaction: transaction),
                         ),
-                      ),
-                      onDelete: () => _confirmAndDelete(transaction.id),
+                        onDelete: () => _confirmAndDelete(transaction.id),
+                      )
+                          .animate()
+                          .fadeIn(delay: (40 * index).ms, duration: 250.ms)
+                          .slideX(begin: 0.03, end: 0),
                     );
                   },
                 );

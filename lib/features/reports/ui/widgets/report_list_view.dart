@@ -28,9 +28,12 @@ class ReportListView extends ConsumerWidget {
       itemCount: sorted.length,
       itemBuilder: (context, index) {
         final transaction = sorted[index];
-        return TransactionTile(
-          transaction: transaction,
-          category: categoryById[transaction.categoryId],
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: TransactionTile(
+            transaction: transaction,
+            category: categoryById[transaction.categoryId],
+          ),
         );
       },
     );

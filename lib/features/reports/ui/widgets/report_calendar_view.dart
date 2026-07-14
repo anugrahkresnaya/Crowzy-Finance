@@ -36,10 +36,14 @@ class _ReportCalendarViewState extends ConsumerState<ReportCalendarView> {
             ? const Center(child: Text('No transactions on this day'))
             : ListView.builder(
                 controller: controller,
+                padding: const EdgeInsets.all(16),
                 itemCount: transactions.length,
-                itemBuilder: (context, index) => TransactionTile(
-                  transaction: transactions[index],
-                  category: categoryById[transactions[index].categoryId],
+                itemBuilder: (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: TransactionTile(
+                    transaction: transactions[index],
+                    category: categoryById[transactions[index].categoryId],
+                  ),
                 ),
               ),
       ),
@@ -52,6 +56,8 @@ class _ReportCalendarViewState extends ConsumerState<ReportCalendarView> {
     final markers = ref.watch(reportCalendarMarkersProvider);
     final focusedDay = DateTime(month.year, month.month, 1);
 
+    final scheme = Theme.of(context).colorScheme;
+
     return TableCalendar(
       key: ValueKey(month),
       firstDay: DateTime(month.year, month.month, 1),
@@ -60,6 +66,19 @@ class _ReportCalendarViewState extends ConsumerState<ReportCalendarView> {
       headerVisible: false,
       availableGestures: AvailableGestures.none,
       selectedDayPredicate: (day) => _selectedDay != null && isSameDay(_selectedDay, day),
+      calendarStyle: CalendarStyle(
+        defaultTextStyle: TextStyle(color: scheme.onSurface),
+        weekendTextStyle: TextStyle(color: scheme.onSurface),
+        todayDecoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: scheme.primary.withValues(alpha: 0.25),
+        ),
+        todayTextStyle: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700),
+        selectedDecoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: scheme.primary,
+        ),
+      ),
       onDaySelected: (selected, focused) {
         setState(() => _selectedDay = selected);
         _showDayTransactions(selected);

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/auth_background.dart';
 import '../providers/auth_provider.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
@@ -52,7 +55,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
+        child: AuthBackground(
+          child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Form(
@@ -64,7 +68,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Text(
                     'Crowzy Finance',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   const SizedBox(height: 32),
                   AppTextField(
@@ -99,26 +105,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextButton(
                     onPressed: isLoading
                         ? null
-                        : () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const SignupScreen(),
-                              ),
-                            ),
+                        : () => pushSlide(context, const SignupScreen()),
                     child: const Text("Don't have an account? Sign up"),
                   ),
                   TextButton(
                     onPressed: isLoading
                         ? null
-                        : () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const ForgotPasswordScreen(),
-                              ),
-                            ),
+                        : () => pushSlide(context, const ForgotPasswordScreen()),
                     child: const Text('Forgot password?'),
                   ),
                 ],
-              ),
+              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.04, end: 0),
             ),
+          ),
           ),
         ),
       ),

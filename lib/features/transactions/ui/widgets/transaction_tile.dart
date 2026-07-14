@@ -27,27 +27,65 @@ class TransactionTile extends StatelessWidget {
     final color = isIncome ? AppColors.income : AppColors.expense;
     final sign = isIncome ? '+' : '-';
 
-    return ListTile(
-      onTap: onTap,
-      leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.15),
-        child: Icon(IconMapper.iconFor(category?.icon ?? 'category'), color: color),
-      ),
-      title: Text(category?.name ?? 'Uncategorized'),
-      subtitle: transaction.note?.isNotEmpty == true ? Text(transaction.note!) : null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '$sign${CurrencyFormatter.format(transaction.amount)}',
-            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [color.withValues(alpha: 0.22), color.withValues(alpha: 0.1)],
+                  ),
+                ),
+                child: Icon(IconMapper.iconFor(category?.icon ?? 'category'), color: color),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category?.name ?? 'Uncategorized',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (transaction.note?.isNotEmpty == true) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        transaction.note!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Text(
+                '$sign${CurrencyFormatter.format(transaction.amount)}',
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+              if (onDelete != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  onPressed: onDelete,
+                ),
+            ],
           ),
-          if (onDelete != null)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: onDelete,
-            ),
-        ],
+        ),
       ),
     );
   }

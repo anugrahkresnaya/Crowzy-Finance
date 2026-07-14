@@ -17,6 +17,7 @@ class AppTheme {
       brightness: brightness,
     ).copyWith(
       surface: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      primary: isDark ? AppColors.seedLight : AppColors.seed,
     );
 
     final baseTextTheme = isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme;
@@ -34,6 +35,11 @@ class AppTheme {
       outlinedButtonTheme: _outlinedButtonTheme(colorScheme),
       appBarTheme: _appBarTheme(colorScheme, textTheme),
       snackBarTheme: _snackBarTheme(colorScheme),
+      cardTheme: _cardTheme(colorScheme, isDark),
+      navigationBarTheme: _navigationBarTheme(colorScheme, textTheme, isDark),
+      chipTheme: _chipTheme(colorScheme, isDark),
+      tabBarTheme: _tabBarTheme(colorScheme),
+      dividerColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.06),
     );
   }
 
@@ -46,7 +52,7 @@ class AppTheme {
 
     return InputDecorationTheme(
       filled: true,
-      fillColor: Color.alphaBlend(scheme.primary.withValues(alpha: 0.06), scheme.surface),
+      fillColor: Color.alphaBlend(scheme.primary.withValues(alpha: 0.08), scheme.surface),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       border: border(Colors.transparent, 0),
       enabledBorder: border(Colors.transparent, 0),
@@ -105,6 +111,73 @@ class AppTheme {
     return SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
+  static CardThemeData _cardTheme(ColorScheme scheme, bool isDark) {
+    return CardThemeData(
+      elevation: 0,
+      color: isDark ? AppColors.darkSurface : scheme.surface,
+      surfaceTintColor: Colors.transparent,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+        ),
+      ),
+    );
+  }
+
+  static NavigationBarThemeData _navigationBarTheme(
+    ColorScheme scheme,
+    TextTheme textTheme,
+    bool isDark,
+  ) {
+    return NavigationBarThemeData(
+      height: 68,
+      elevation: 0,
+      backgroundColor: isDark ? AppColors.darkSurface : scheme.surface,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: scheme.primary.withValues(alpha: isDark ? 0.24 : 0.16),
+      indicatorShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => textTheme.labelMedium?.copyWith(
+          fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+          color: states.contains(WidgetState.selected) ? scheme.primary : scheme.onSurfaceVariant,
+        ),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected) ? scheme.primary : scheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  static ChipThemeData _chipTheme(ColorScheme scheme, bool isDark) {
+    return ChipThemeData(
+      backgroundColor: Color.alphaBlend(scheme.primary.withValues(alpha: 0.1), scheme.surface),
+      selectedColor: scheme.primary.withValues(alpha: 0.24),
+      deleteIconColor: scheme.primary,
+      labelStyle: TextStyle(color: scheme.onSurface),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    );
+  }
+
+  static TabBarThemeData _tabBarTheme(ColorScheme scheme) {
+    return TabBarThemeData(
+      indicator: BoxDecoration(
+        borderRadius: BorderRadius.circular(100),
+        color: scheme.primary.withValues(alpha: 0.18),
+      ),
+      indicatorSize: TabBarIndicatorSize.tab,
+      dividerColor: Colors.transparent,
+      labelColor: scheme.primary,
+      unselectedLabelColor: scheme.onSurfaceVariant,
+      labelStyle: const TextStyle(fontWeight: FontWeight.w700),
     );
   }
 }

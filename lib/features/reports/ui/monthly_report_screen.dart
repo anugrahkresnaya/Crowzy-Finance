@@ -94,13 +94,24 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
             if (incomeBreakdown.isNotEmpty) ...[
               Text('Income by Category', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              ...incomeBreakdown.map(
-                (entry) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(entry.category?.name ?? 'Uncategorized'),
-                  trailing: Text(
-                    '${CurrencyFormatter.format(entry.total)} (${entry.percentage.toStringAsFixed(0)}%)',
-                    style: const TextStyle(color: AppColors.income),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    children: incomeBreakdown
+                        .map(
+                          (entry) => ListTile(
+                            title: Text(entry.category?.name ?? 'Uncategorized'),
+                            trailing: Text(
+                              '${CurrencyFormatter.format(entry.total)} (${entry.percentage.toStringAsFixed(0)}%)',
+                              style: const TextStyle(
+                                color: AppColors.income,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ),
@@ -109,13 +120,24 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
             if (expenseBreakdown.isNotEmpty) ...[
               Text('Expense by Category', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              ...expenseBreakdown.map(
-                (entry) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(entry.category?.name ?? 'Uncategorized'),
-                  trailing: Text(
-                    '${CurrencyFormatter.format(entry.total)} (${entry.percentage.toStringAsFixed(0)}%)',
-                    style: const TextStyle(color: AppColors.expense),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    children: expenseBreakdown
+                        .map(
+                          (entry) => ListTile(
+                            title: Text(entry.category?.name ?? 'Uncategorized'),
+                            trailing: Text(
+                              '${CurrencyFormatter.format(entry.total)} (${entry.percentage.toStringAsFixed(0)}%)',
+                              style: const TextStyle(
+                                color: AppColors.expense,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               ),
