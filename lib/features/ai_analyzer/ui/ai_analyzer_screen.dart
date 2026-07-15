@@ -12,15 +12,34 @@ import '../../transactions/providers/transaction_provider.dart';
 import '../../transactions/ui/add_edit_transaction_screen.dart';
 import '../providers/ai_analyzer_provider.dart';
 import 'widgets/ai_suggestion_confirm_sheet.dart';
+import 'widgets/chat_qa_tab.dart';
 
-class AiAnalyzerScreen extends ConsumerStatefulWidget {
+class AiAnalyzerScreen extends StatelessWidget {
   const AiAnalyzerScreen({super.key});
 
   @override
-  ConsumerState<AiAnalyzerScreen> createState() => _AiAnalyzerScreenState();
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('AI Assistant'),
+          bottom: const TabBar(tabs: [Tab(text: 'Add'), Tab(text: 'Ask')]),
+        ),
+        body: const TabBarView(children: [_AddTab(), ChatQaTab()]),
+      ),
+    );
+  }
 }
 
-class _AiAnalyzerScreenState extends ConsumerState<AiAnalyzerScreen> {
+class _AddTab extends ConsumerStatefulWidget {
+  const _AddTab();
+
+  @override
+  ConsumerState<_AddTab> createState() => _AddTabState();
+}
+
+class _AddTabState extends ConsumerState<_AddTab> {
   final _textController = TextEditingController();
 
   @override
@@ -97,55 +116,52 @@ class _AiAnalyzerScreenState extends ConsumerState<AiAnalyzerScreen> {
     final isLoading = parserState.isLoading;
     final error = parserState.hasError ? parserState.error : null;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Add with AI')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Describe a transaction in plain text and AI will fill in the details for you to confirm.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            AppTextField(
+              controller: _textController,
+              label: 'e.g. "spent 50k on coffee today"',
+              minLines: 2,
+              maxLines: 4,
+              enabled: !isLoading,
+              textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: isLoading ? null : _submit,
+              child: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Parse'),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 16),
               Text(
-                'Describe a transaction in plain text and AI will fill in the details for you to confirm.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                '$error',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
-              const SizedBox(height: 16),
-              AppTextField(
-                controller: _textController,
-                label: 'e.g. "spent 50k on coffee today"',
-                minLines: 2,
-                maxLines: 4,
-                enabled: !isLoading,
-                textInputAction: TextInputAction.done,
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () =>
+                    pushSlide(context, const AddEditTransactionScreen()),
+                child: const Text('Add manually instead'),
               ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: isLoading ? null : _submit,
-                child: isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Parse'),
-              ),
-              if (error != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  '$error',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: () =>
-                      pushSlide(context, const AddEditTransactionScreen()),
-                  child: const Text('Add manually instead'),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
     );

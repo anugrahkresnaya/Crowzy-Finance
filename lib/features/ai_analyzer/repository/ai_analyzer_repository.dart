@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/models/ai_transaction_suggestion.dart';
+import '../../../data/models/chat_message.dart';
 
 class AiParseException implements Exception {
   const AiParseException(this.message);
@@ -34,5 +35,29 @@ class AiAnalyzerRepository {
     return AiTransactionSuggestion.fromJson(
       Map<String, dynamic>.from(data['suggestion'] as Map),
     );
+  }
+
+  Future<String> askQuestion({
+    required List<ChatMessage> history,
+    required Map<String, dynamic> context,
+  }) async {
+    final response = await _client.functions.invoke(
+      'chat-qa',
+      body: {
+        'messages': [
+          for (final m in history) {'role': m.role.name, 'content': m.content},
+        ],
+        'context': context,
+        'clientNow': DateTime.now().toIso8601String(),
+      },
+    );
+
+    final data = response.data;
+    if (data is! Map || data['ok'] != true) {
+      final message = data is Map ? data['error'] as String? : null;
+      throw AiParseException(message ?? 'Could not answer that.');
+    }
+
+    return data['answer'] as String;
   }
 }
