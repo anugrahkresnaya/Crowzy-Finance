@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/ai_correction_intent.dart';
 import '../../../data/models/ai_transaction_suggestion.dart';
 import '../../../data/models/chat_message.dart';
+import '../../../data/models/passive_insight.dart';
 
 class AiParseException implements Exception {
   const AiParseException(this.message);
@@ -79,6 +80,26 @@ class AiAnalyzerRepository {
 
     return AiCorrectionIntent.fromJson(
       Map<String, dynamic>.from(data['intent'] as Map),
+    );
+  }
+
+  Future<PassiveInsight> getPassiveInsight(Map<String, dynamic> context) async {
+    final response = await _client.functions.invoke(
+      'passive-insights',
+      body: {
+        'context': context,
+        'clientNow': DateTime.now().toIso8601String(),
+      },
+    );
+
+    final data = response.data;
+    if (data is! Map || data['ok'] != true) {
+      final message = data is Map ? data['error'] as String? : null;
+      throw AiParseException(message ?? 'Could not generate an insight.');
+    }
+
+    return PassiveInsight.fromJson(
+      Map<String, dynamic>.from(data['insight'] as Map),
     );
   }
 }
