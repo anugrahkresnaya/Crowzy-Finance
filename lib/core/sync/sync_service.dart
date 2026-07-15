@@ -3,18 +3,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/models/category_model.dart';
 import '../../data/models/transaction_model.dart';
+import '../../data/models/wishlist_model.dart';
 
 class SyncService {
   SyncService(
     this._client,
     this._categoryBox,
     this._transactionBox,
+    this._wishlistBox,
     this._syncMetaBox,
   );
 
   final SupabaseClient _client;
   final Box<Map> _categoryBox;
   final Box<Map> _transactionBox;
+  final Box<Map> _wishlistBox;
   final Box _syncMetaBox;
 
   static const _pageSize = 500;
@@ -22,8 +25,10 @@ class SyncService {
   Future<void> sync(String userId) async {
     await _pushCategories();
     await _pushTransactions();
+    await _pushWishlist();
     await _pullCategories(userId);
     await _pullTransactions(userId);
+    await _pullWishlist(userId);
   }
 
   Future<void> _pushCategories() async {
@@ -49,6 +54,19 @@ class SyncService {
     await _client.from('transactions').upsert(dirty.map((t) => t.toSupabaseRow()).toList());
     for (final transaction in dirty) {
       await _transactionBox.put(transaction.id, transaction.copyWith(isSynced: true).toJson());
+    }
+  }
+
+  Future<void> _pushWishlist() async {
+    final dirty = _wishlistBox.values
+        .map((raw) => WishlistModel.fromJson(Map<String, dynamic>.from(raw)))
+        .where((goal) => !goal.isSynced)
+        .toList();
+    if (dirty.isEmpty) return;
+
+    await _client.from('wishlist').upsert(dirty.map((g) => g.toSupabaseRow()).toList());
+    for (final goal in dirty) {
+      await _wishlistBox.put(goal.id, goal.copyWith(isSynced: true).toJson());
     }
   }
 
@@ -112,6 +130,36 @@ class SyncService {
     if (newestSeen != null) await _setLastSyncedAt('transactions', userId, newestSeen);
   }
 
+  Future<void> _pullWishlist(String userId) async {
+    final since = _lastSyncedAt('wishlist', userId);
+    var offset = 0;
+    DateTime? newestSeen;
+
+    while (true) {
+      final rows = await _client
+          .from('wishlist')
+          .select()
+          .eq('user_id', userId)
+          .gt('updated_at', since.toIso8601String())
+          .order('updated_at')
+          .range(offset, offset + _pageSize - 1);
+      if (rows.isEmpty) break;
+
+      for (final row in rows) {
+        final remote =
+            WishlistModel.fromJson(Map<String, dynamic>.from(row)).copyWith(isSynced: true);
+        await _mergeWishlist(remote);
+        if (newestSeen == null || remote.updatedAt.isAfter(newestSeen)) {
+          newestSeen = remote.updatedAt;
+        }
+      }
+      if (rows.length < _pageSize) break;
+      offset += _pageSize;
+    }
+
+    if (newestSeen != null) await _setLastSyncedAt('wishlist', userId, newestSeen);
+  }
+
   Future<void> _mergeCategory(CategoryModel remote) async {
     final raw = _categoryBox.get(remote.id);
     if (raw != null) {
@@ -128,6 +176,15 @@ class SyncService {
       if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
     }
     await _transactionBox.put(remote.id, remote.toJson());
+  }
+
+  Future<void> _mergeWishlist(WishlistModel remote) async {
+    final raw = _wishlistBox.get(remote.id);
+    if (raw != null) {
+      final local = WishlistModel.fromJson(Map<String, dynamic>.from(raw));
+      if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
+    }
+    await _wishlistBox.put(remote.id, remote.toJson());
   }
 
   DateTime _lastSyncedAt(String key, String userId) {
