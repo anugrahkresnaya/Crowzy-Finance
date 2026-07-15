@@ -1,10 +1,18 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../data/models/ai_correction_intent.dart';
 import '../../../../data/models/chat_message.dart';
+import '../../../../data/models/transaction_model.dart';
+import '../../../categories/providers/category_provider.dart';
+import '../../../transactions/providers/transaction_provider.dart';
 import '../../providers/chat_qa_provider.dart';
 import 'chat_message_bubble.dart';
+import 'correction_candidate_picker_sheet.dart';
+import 'correction_confirm_sheet.dart';
 
 const _exampleQuestions = [
   'How much did I spend on food last week?',
@@ -41,12 +49,58 @@ class _ChatQaTabState extends ConsumerState<ChatQaTab> {
     });
   }
 
-  void _send([String? text]) {
-    final value = text ?? _textController.text;
-    if (value.trim().isEmpty) return;
+  Future<void> _send([String? text]) async {
+    final value = (text ?? _textController.text).trim();
+    if (value.isEmpty) return;
     FocusScope.of(context).unfocus();
     _textController.clear();
-    ref.read(chatQaProvider.notifier).send(value);
+
+    final notifier = ref.read(chatQaProvider.notifier);
+    notifier.appendUserMessage(value);
+
+    final outcome = await notifier.classifyAndMatch(value);
+    if (!mounted) return;
+
+    switch (outcome) {
+      case CorrectionNotCorrection():
+        await notifier.answerQuestion();
+      case CorrectionNoMatch():
+        notifier.appendAssistantMessage(
+          "I couldn't find a matching transaction for that — try editing it manually.",
+        );
+      case CorrectionSingle(:final transaction, :final intent):
+        await _handleMatch(transaction, intent);
+      case CorrectionMultiple(:final candidates, :final intent):
+        final categories = ref.read(categoryListProvider).value ?? const [];
+        final chosen = await showCorrectionCandidatePickerSheet(context, candidates, categories);
+        if (chosen != null && mounted) await _handleMatch(chosen, intent);
+    }
+  }
+
+  Future<void> _handleMatch(TransactionModel transaction, AiCorrectionIntent intent) async {
+    if (!mounted) return;
+    final result = await showCorrectionConfirmSheet(context, matched: transaction, intent: intent);
+    if (result == null || !mounted) return;
+
+    final notifier = ref.read(chatQaProvider.notifier);
+    final categories = ref.read(categoryListProvider).value ?? const [];
+    final categoryName =
+        categories.where((c) => c.id == result.categoryId).map((c) => c.name).firstOrNull ??
+            'Uncategorized';
+
+    await ref.read(transactionListProvider.notifier).updateTransaction(
+          transaction.copyWith(
+            amount: result.amount,
+            type: result.type,
+            categoryId: result.categoryId,
+            date: result.date,
+            note: result.note,
+          ),
+        );
+
+    notifier.appendAssistantMessage(
+      'Updated: $categoryName — ${CurrencyFormatter.format(transaction.amount)} → ${CurrencyFormatter.format(result.amount)}',
+    );
   }
 
   @override
