@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/gradient_balance_card.dart';
+import '../../ai_analyzer/ui/ai_analyzer_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../transactions/providers/transaction_provider.dart';
@@ -32,6 +33,11 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Crowzy Finance'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome_outlined),
+            tooltip: 'Add with AI',
+            onPressed: () => pushSlide(context, const AiAnalyzerScreen()),
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Log out',
