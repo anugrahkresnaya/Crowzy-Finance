@@ -5,6 +5,8 @@
 .packages
 .pub/
 build/
+.flutter-plugins
+.flutter-plugins-dependencies
 
 # Logs & temp
 *.log
@@ -57,6 +59,15 @@ coverage/
 # ==============================
 .env
 .env.*
+
+# ==============================
+# AI / Claude config (private)
+# ==============================
+.claude/
+claude.md
+CLAUDE.md
+agent.md
+AGENT.md
 
 # ==============================
 # Misc
