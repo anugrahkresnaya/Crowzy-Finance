@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/gradient_balance_card.dart';
+import '../../ai_analyzer/ui/ai_analyzer_screen.dart';
+import '../../ai_analyzer/ui/widgets/passive_insight_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../transactions/providers/transaction_provider.dart';
@@ -33,6 +35,11 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Crowzy Finance'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.auto_awesome_outlined),
+            tooltip: 'Add with AI',
+            onPressed: () => pushSlide(context, const AiAnalyzerScreen()),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Log out',
             onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
@@ -58,6 +65,10 @@ class HomeScreen extends ConsumerWidget {
               allTimeBalance: allTimeBalance,
               thisMonthBalance: thisMonthBalance,
             ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
+            const PassiveInsightCard()
+                .animate()
+                .fadeIn(delay: 150.ms, duration: 400.ms)
+                .slideY(begin: 0.05, end: 0),
             const SizedBox(height: 28),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

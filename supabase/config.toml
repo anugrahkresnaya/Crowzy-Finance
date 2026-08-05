@@ -1,0 +1,10 @@
+project_id = "drzokxtinnicbldxegnu"
+
+[functions.parse-transaction]
+verify_jwt = true
+
+[functions.chat-qa]
+verify_jwt = true
+
+[functions.parse-correction]
+verify_jwt = true
