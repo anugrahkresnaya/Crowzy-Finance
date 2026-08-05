@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.parse-correction]
 verify_jwt = true
+
+[functions.generate-alerts]
+verify_jwt = false

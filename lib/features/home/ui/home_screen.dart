@@ -7,6 +7,10 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/gradient_balance_card.dart';
 import '../../ai_analyzer/ui/ai_analyzer_screen.dart';
 import '../../ai_analyzer/ui/widgets/passive_insight_card.dart';
+import '../../alerts/providers/alert_provider.dart';
+import '../../alerts/ui/alerts_list_screen.dart';
+import '../../alerts/ui/widgets/alert_tile.dart';
+import '../../alerts/ui/widgets/alerts_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../transactions/providers/transaction_provider.dart';
@@ -27,6 +31,7 @@ class HomeScreen extends ConsumerWidget {
     final thisMonthBalance = ref.watch(thisMonthBalanceProvider);
     final recentTransactions = ref.watch(recentTransactionsProvider);
     final activeGoals = ref.watch(activeWishlistGoalsProvider);
+    final unreadAlerts = ref.watch(unreadAlertsProvider);
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final categoryById = {for (final c in categories) c.id: c};
 
@@ -68,6 +73,10 @@ class HomeScreen extends ConsumerWidget {
             const PassiveInsightCard()
                 .animate()
                 .fadeIn(delay: 150.ms, duration: 400.ms)
+                .slideY(begin: 0.05, end: 0),
+            const AlertsCard()
+                .animate()
+                .fadeIn(delay: 200.ms, duration: 400.ms)
                 .slideY(begin: 0.05, end: 0),
             const SizedBox(height: 28),
             Row(
@@ -124,6 +133,38 @@ class HomeScreen extends ConsumerWidget {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: WishlistTile(goal: goal)
+                        .animate()
+                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
+                        .slideX(begin: 0.04, end: 0),
+                  );
+                },
+              ),
+            const SizedBox(height: 28),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Alerts', style: Theme.of(context).textTheme.titleMedium),
+                TextButton(
+                  onPressed: () => pushSlide(context, const AlertsListScreen()),
+                  child: const Text('See all'),
+                ),
+              ],
+            ),
+            if (unreadAlerts.isEmpty)
+              const EmptyState(
+                icon: Icons.notifications_none_outlined,
+                message: 'No alerts — you\'re all caught up',
+              )
+            else
+              ...unreadAlerts.take(3).indexed.map(
+                (entry) {
+                  final (index, alert) = entry;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AlertTile(
+                      alert: alert,
+                      onTap: () => ref.read(alertListProvider.notifier).markRead(alert.id),
+                    )
                         .animate()
                         .fadeIn(delay: (60 * index).ms, duration: 300.ms)
                         .slideX(begin: 0.04, end: 0),

@@ -48,7 +48,7 @@ final class SyncServiceProvider
   }
 }
 
-String _$syncServiceHash() => r'599acb68120d8a0e79666b6e0e64216a8a1940df';
+String _$syncServiceHash() => r'437f4ce0f8fcc52b64fab65901ed054a9e788a56';
 
 @ProviderFor(SyncController)
 final syncControllerProvider = SyncControllerProvider._();
@@ -74,7 +74,7 @@ final class SyncControllerProvider
   SyncController create() => SyncController();
 }
 
-String _$syncControllerHash() => r'ebbf8cc8643c045864e7095036d0c4fcada33465';
+String _$syncControllerHash() => r'068ae9ac94212ad163316b07c9c3e80a278784ce';
 
 abstract class _$SyncController extends $AsyncNotifier<void> {
   FutureOr<void> build();
