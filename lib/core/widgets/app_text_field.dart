@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_text.dart';
 
@@ -9,6 +10,7 @@ class AppTextField extends StatefulWidget {
     super.key,
     required this.controller,
     required this.label,
+    this.hint,
     this.validator,
     this.keyboardType,
     this.isPassword = false,
@@ -17,10 +19,14 @@ class AppTextField extends StatefulWidget {
     this.minLines,
     this.maxLines = 1,
     this.textInputAction,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
   final String label;
+
+  /// Example text shown inside the field while it is empty.
+  final String? hint;
   final FormFieldValidator<String>? validator;
   final TextInputType? keyboardType;
   final bool isPassword;
@@ -29,6 +35,7 @@ class AppTextField extends StatefulWidget {
   final int? minLines;
   final int? maxLines;
   final TextInputAction? textInputAction;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -57,7 +64,9 @@ class _AppTextFieldState extends State<AppTextField> {
             minLines: widget.isPassword ? 1 : widget.minLines,
             maxLines: widget.isPassword ? 1 : widget.maxLines,
             textInputAction: widget.textInputAction,
+            inputFormatters: widget.inputFormatters,
             decoration: InputDecoration(
+              hintText: widget.hint,
               prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
               suffixIcon: widget.isPassword
                   ? IconButton(
