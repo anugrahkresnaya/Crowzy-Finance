@@ -43,6 +43,7 @@ class _ReportCalendarViewState extends ConsumerState<ReportCalendarView> {
                   child: TransactionTile(
                     transaction: transactions[index],
                     category: categoryById[transactions[index].categoryId],
+                    showDate: false,
                   ),
                 ),
               ),

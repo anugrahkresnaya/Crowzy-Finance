@@ -43,4 +43,26 @@ class NotificationService {
       details,
     );
   }
+
+  Future<void> showNewAlerts(int count) async {
+    const androidDetails = AndroidNotificationDetails(
+      'spending_alerts',
+      'Spending & Income Alerts',
+      channelDescription: 'Notifies when a new spending or income alert is generated',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+    await _plugin.show(
+      'new_alerts'.hashCode,
+      count == 1 ? 'New alert' : '$count new alerts',
+      count == 1
+          ? 'You have a new spending or income alert.'
+          : 'You have $count new spending or income alerts.',
+      details,
+    );
+  }
 }

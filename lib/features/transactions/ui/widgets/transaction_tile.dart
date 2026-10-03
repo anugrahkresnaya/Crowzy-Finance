@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/icon_mapper.dart';
 import '../../../../data/models/category_model.dart';
 import '../../../../data/models/transaction_model.dart';
@@ -14,18 +15,25 @@ class TransactionTile extends StatelessWidget {
     required this.category,
     this.onTap,
     this.onDelete,
+    this.showDate = true,
   });
 
   final TransactionModel transaction;
   final CategoryModel? category;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final bool showDate;
 
   @override
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
     final color = isIncome ? AppColors.income : AppColors.expense;
     final sign = isIncome ? '+' : '-';
+    final note = transaction.note?.isNotEmpty == true ? transaction.note : null;
+    final subtitle = [
+      if (showDate) DateFormatter.day(transaction.date),
+      ?note,
+    ].join(' · ');
 
     return Card(
       child: InkWell(
@@ -60,10 +68,10 @@ class TransactionTile extends StatelessWidget {
                           .bodyLarge
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
-                    if (transaction.note?.isNotEmpty == true) ...[
+                    if (subtitle.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
-                        transaction.note!,
+                        subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(

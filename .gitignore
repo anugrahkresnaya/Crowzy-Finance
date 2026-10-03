@@ -72,7 +72,7 @@ AGENT.md
 # ==============================
 # Misc
 # ==============================
-*.lock
+# pubspec.lock is committed (app, not a library) for reproducible builds.
 
 # ==============================
 # Optional (uncomment if needed)

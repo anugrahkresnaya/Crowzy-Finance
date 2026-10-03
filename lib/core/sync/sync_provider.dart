@@ -1,10 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/alerts/providers/alert_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/categories/providers/category_provider.dart';
 import '../../features/transactions/providers/transaction_provider.dart';
 import '../../features/wishlist/providers/wishlist_provider.dart';
+import '../notifications/notification_provider.dart';
 import '../providers/supabase_provider.dart';
+import 'sync_scheduler.dart';
 import 'sync_service.dart';
 
 part 'sync_provider.g.dart';
@@ -16,27 +20,70 @@ SyncService syncService(Ref ref) {
     ref.watch(categoryBoxProvider),
     ref.watch(transactionBoxProvider),
     ref.watch(wishlistBoxProvider),
+    ref.watch(alertsBoxProvider),
     ref.watch(syncMetaBoxProvider),
   );
 }
 
-@riverpod
+// keepAlive: the controller owns the write-triggered SyncScheduler, which
+// must outlive individual reads of the notifier.
+@Riverpod(keepAlive: true)
 class SyncController extends _$SyncController {
-  @override
-  Future<void> build() async {}
+  Future<void>? _inFlight;
 
-  Future<void> syncNow() async {
+  @override
+  Future<void> build() async {
+    final scheduler = SyncScheduler(
+      boxes: [
+        ref.read(categoryBoxProvider),
+        ref.read(transactionBoxProvider),
+        ref.read(wishlistBoxProvider),
+      ],
+      onSync: syncNow,
+    );
+    ref.onDispose(scheduler.dispose);
+  }
+
+  /// Never throws: local data stays usable offline-first and the next
+  /// start/resume retries. Failures are logged and surfaced as this
+  /// controller's [AsyncError] state, and whatever did sync is still applied.
+  ///
+  /// Concurrent calls (resume, login, write-triggered) share one run.
+  Future<void> syncNow() => _inFlight ??= _syncNow().whenComplete(() => _inFlight = null);
+
+  Future<void> _syncNow() async {
     final userId = ref.read(currentUserProvider)?.id;
     if (userId == null) return;
 
+    final beforeUnread = ref.read(unreadAlertsProvider).length;
+
+    Object? failure;
+    StackTrace? failureTrace;
     try {
       await ref.read(syncServiceProvider).sync(userId);
-      ref.invalidate(categoryListProvider);
-      ref.invalidate(transactionListProvider);
-      ref.invalidate(wishlistListProvider);
-    } catch (_) {
-      // Non-fatal: local data stays usable offline-first; retried on the next
-      // app start / resume / write.
+    } catch (error, stackTrace) {
+      failure = error;
+      failureTrace = stackTrace;
+      debugPrint('Sync failed: $error');
     }
+
+    // Partial success is still success for the steps that completed.
+    ref.invalidate(categoryListProvider);
+    ref.invalidate(transactionListProvider);
+    ref.invalidate(wishlistListProvider);
+    ref.invalidate(alertListProvider);
+
+    final newUnread = ref.read(unreadAlertsProvider).length - beforeUnread;
+    if (newUnread > 0) {
+      try {
+        await ref.read(notificationServiceProvider).showNewAlerts(newUnread);
+      } catch (error) {
+        debugPrint('Showing alert notification failed: $error');
+      }
+    }
+
+    state = failure == null
+        ? const AsyncData(null)
+        : AsyncError(failure, failureTrace!);
   }
 }
