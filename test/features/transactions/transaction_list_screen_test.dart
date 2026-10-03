@@ -189,4 +189,36 @@ void main() {
 
     expect(find.textContaining('No transactions in'), findsOneWidget);
   });
+
+  testWidgets('tapping a transaction opens its receipt', (tester) async {
+    await pump(tester, [tx('a', today, amount: 184500, note: 'Groceries')]);
+
+    await tester.tap(find.text('Groceries'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('TRANSACTION RECEIPT'), findsOneWidget);
+  });
+
+  testWidgets('can open on a given month', (tester) async {
+    _seed = [tx('then', DateTime(2020, 5, 5), note: 'Long ago')];
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionListProvider.overrideWith(_FakeTransactions.new),
+          categoryListProvider.overrideWith(_FakeCategories.new),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: TransactionListScreen(initialMonth: DateTime(2020, 5, 20)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('MAY 2020'), findsOneWidget);
+    expect(find.text('Long ago'), findsOneWidget);
+  });
 }

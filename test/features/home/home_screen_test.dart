@@ -17,6 +17,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+List<TransactionModel> _all = [];
+
+class _FakeTransactions extends TransactionList {
+  @override
+  Future<List<TransactionModel>> build() async => _all;
+}
+
 class _FakeCategories extends CategoryList {
   @override
   Future<List<CategoryModel>> build() async => [
@@ -73,6 +80,7 @@ void main() {
     List<WishlistModel> goals = const [],
     List<AlertModel> alerts = const [],
   }) async {
+    _all = recent;
     await tester.binding.setSurfaceSize(const Size(390, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -84,6 +92,7 @@ void main() {
           thisMonthSummaryProvider.overrideWithValue(
             const MonthSummary(income: 18200000, expense: 5720000, changePercent: 8.4),
           ),
+          transactionListProvider.overrideWith(_FakeTransactions.new),
           recentTransactionsProvider.overrideWithValue(recent),
           activeWishlistGoalsProvider.overrideWithValue(goals),
           unreadAlertsProvider.overrideWithValue(alerts),
@@ -154,5 +163,14 @@ void main() {
 
     expect(find.text('GOOD NEWS'), findsOneWidget);
     expect(find.text('NOTICE'), findsNothing);
+  });
+
+  testWidgets('tapping a recent transaction opens its receipt', (tester) async {
+    await pumpHome(tester, recent: [tx('1', 1000, note: 'One')]);
+
+    await tester.tap(find.text('One'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('TRANSACTION RECEIPT'), findsOneWidget);
   });
 }

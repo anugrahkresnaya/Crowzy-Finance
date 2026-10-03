@@ -15,6 +15,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../categories/ui/category_list_screen.dart';
 import '../../transactions/providers/transaction_provider.dart';
+import '../../transactions/ui/transaction_detail_screen.dart';
 import '../../transactions/ui/transaction_list_screen.dart';
 import '../../transactions/ui/widgets/transaction_tile.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
@@ -111,6 +112,10 @@ class HomeScreen extends ConsumerWidget {
                     child: TransactionTile(
                       transaction: transaction,
                       category: categoryById[transaction.categoryId],
+                      onTap: () => pushSlide(
+                        context,
+                        TransactionDetailScreen(transactionId: transaction.id),
+                      ),
                     ).entrance(context, index: index, axis: Axis.horizontal),
                   );
                 },

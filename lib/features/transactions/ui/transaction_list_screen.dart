@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
 import '../../../core/utils/app_page_route.dart';
-import '../../../core/utils/confirm_dialog.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
@@ -18,11 +17,14 @@ import '../../categories/providers/category_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/transaction_filter.dart';
 import '../utils/transaction_sort.dart';
-import 'add_edit_transaction_screen.dart';
+import 'transaction_detail_screen.dart';
 import 'widgets/transaction_tile.dart';
 
 class TransactionListScreen extends ConsumerStatefulWidget {
-  const TransactionListScreen({super.key});
+  const TransactionListScreen({super.key, this.initialMonth});
+
+  /// The month to open on; defaults to the current one.
+  final DateTime? initialMonth;
 
   @override
   ConsumerState<TransactionListScreen> createState() => _TransactionListScreenState();
@@ -31,7 +33,7 @@ class TransactionListScreen extends ConsumerStatefulWidget {
 enum _MenuAction { category, dateRange }
 
 class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
-  late DateTime _month = DateFormatter.startOfMonth(DateTime.now());
+  late DateTime _month = DateFormatter.startOfMonth(widget.initialMonth ?? DateTime.now());
   DateTimeRange? _dateRange;
   String? _categoryId;
   TransactionType? _type;
@@ -80,17 +82,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       ),
     );
     if (selected != null) setState(() => _categoryId = selected);
-  }
-
-  Future<void> _confirmAndDelete(String transactionId) async {
-    final confirmed = await confirmDialog(
-      context,
-      title: 'Delete transaction?',
-      message: 'This cannot be undone.',
-    );
-    if (confirmed) {
-      ref.read(transactionListProvider.notifier).deleteTransaction(transactionId);
-    }
   }
 
   void _toggleSearch() {
@@ -336,9 +327,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
             showDate: !byDate,
             onTap: () => pushSlide(
               context,
-              AddEditTransactionScreen(transaction: transaction),
+              TransactionDetailScreen(transactionId: transaction.id),
             ),
-            onDelete: () => _confirmAndDelete(transaction.id),
           ).entrance(context, index: index, axis: Axis.horizontal),
         );
       },

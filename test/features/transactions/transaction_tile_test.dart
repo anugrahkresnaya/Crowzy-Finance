@@ -89,23 +89,21 @@ void main() {
     expect(find.text('+25.000'), findsOneWidget);
   });
 
-  testWidgets('forwards taps and the delete action', (tester) async {
+  testWidgets('forwards taps', (tester) async {
     var taps = 0;
-    var deletes = 0;
     await pump(
       tester,
-      TransactionTile(
-        transaction: tx(),
-        category: food,
-        onTap: () => taps++,
-        onDelete: () => deletes++,
-      ),
+      TransactionTile(transaction: tx(), category: food, onTap: () => taps++),
     );
 
     await tester.tap(find.text('Food'));
-    await tester.tap(find.byTooltip('Delete'));
 
     expect(taps, 1);
-    expect(deletes, 1);
+  });
+
+  testWidgets('has no delete control; deleting happens on the receipt', (tester) async {
+    await pump(tester, TransactionTile(transaction: tx(), category: food, onTap: () {}));
+
+    expect(find.byTooltip('Delete'), findsNothing);
   });
 }

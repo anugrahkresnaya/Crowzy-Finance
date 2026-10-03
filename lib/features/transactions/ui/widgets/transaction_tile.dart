@@ -19,14 +19,12 @@ class TransactionTile extends StatelessWidget {
     required this.transaction,
     required this.category,
     this.onTap,
-    this.onDelete,
     this.showDate = true,
   });
 
   final TransactionModel transaction;
   final CategoryModel? category;
   final VoidCallback? onTap;
-  final VoidCallback? onDelete;
   final bool showDate;
 
   @override
@@ -101,13 +99,6 @@ class TransactionTile extends StatelessWidget {
                   CurrencyFormatter.signed(transaction.amount, income: isIncome),
                   style: AppText.amount(context, color: color),
                 ),
-                if (onDelete != null)
-                  IconButton(
-                    tooltip: 'Delete',
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    color: AppColors.textFaint,
-                    onPressed: onDelete,
-                  ),
               ],
             ),
           ),
