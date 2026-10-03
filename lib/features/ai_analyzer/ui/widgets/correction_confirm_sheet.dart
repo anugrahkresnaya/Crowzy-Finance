@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
+import '../../../../core/utils/amount_input.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/widgets/app_text_field.dart';
@@ -39,9 +41,6 @@ Future<CorrectionConfirmResult?> showCorrectionConfirmSheet(
     context: context,
     sheetAnimationStyle: AppMotion.sheetAnimation(context),
     isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (context) => _CorrectionConfirmSheet(matched: matched, intent: intent),
   );
 }
@@ -58,7 +57,7 @@ class _CorrectionConfirmSheet extends ConsumerStatefulWidget {
 
 class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet> {
   late final _amountController = TextEditingController(
-    text: (widget.intent.newAmount ?? widget.matched.amount).toStringAsFixed(0),
+    text: CurrencyFormatter.number(widget.intent.newAmount ?? widget.matched.amount),
   );
   late final _noteController =
       TextEditingController(text: widget.intent.newNote ?? widget.matched.note);
@@ -95,7 +94,7 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
   }
 
   void _confirm() {
-    final amount = double.tryParse(_amountController.text.trim());
+    final amount = ThousandsInputFormatter.parse(_amountController.text);
     if (amount == null || amount <= 0) return;
     if (_categoryId == null) return;
 
@@ -117,11 +116,11 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
         ? ref.watch(incomeCategoriesProvider)
         : ref.watch(expenseCategoriesProvider);
 
-    if (_categoryId != null && !categories.any((c) => c.id == _categoryId)) {
+    if (_categoryId != null &&
+        categories.isNotEmpty &&
+        !categories.any((c) => c.id == _categoryId)) {
       _categoryId = categories.isNotEmpty ? categories.first.id : null;
     }
-
-    final color = _type == TransactionType.income ? AppColors.income : AppColors.expense;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -137,7 +136,7 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome_outlined),
+                const Icon(Icons.auto_awesome_outlined, color: AppColors.brass),
                 const SizedBox(width: 8),
                 Text('Confirm correction', style: Theme.of(context).textTheme.titleMedium),
               ],
@@ -147,7 +146,8 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.4),
+                  color: AppColors.surfaceHigh,
+                  border: Border.all(color: AppColors.hairline),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
@@ -157,9 +157,10 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
             ],
             const SizedBox(height: 16),
             SegmentedButton<TransactionType>(
+              showSelectedIcon: false,
               segments: const [
-                ButtonSegment(value: TransactionType.income, label: Text('Income')),
                 ButtonSegment(value: TransactionType.expense, label: Text('Expense')),
+                ButtonSegment(value: TransactionType.income, label: Text('Income')),
               ],
               selected: {_type},
               onSelectionChanged: (selection) => setState(() {
@@ -171,7 +172,11 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
             AppTextField(
               controller: _amountController,
               label: 'Amount',
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                const ThousandsInputFormatter(),
+              ],
             ),
             if (widget.intent.newAmount != null && widget.intent.newAmount != widget.matched.amount) ...[
               const SizedBox(height: 4),
@@ -208,6 +213,7 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
               children: [
                 Expanded(
                   child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
@@ -215,7 +221,6 @@ class _CorrectionConfirmSheetState extends ConsumerState<_CorrectionConfirmSheet
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: color),
                     onPressed: _confirm,
                     child: const Text('Confirm'),
                   ),
@@ -238,10 +243,7 @@ class _WasCaption extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: Theme.of(context)
-          .textTheme
-          .bodySmall
-          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textLabel),
     );
   }
 }
