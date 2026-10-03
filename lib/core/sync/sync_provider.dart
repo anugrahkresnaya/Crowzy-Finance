@@ -8,6 +8,7 @@ import '../../features/transactions/providers/transaction_provider.dart';
 import '../../features/wishlist/providers/wishlist_provider.dart';
 import '../notifications/notification_provider.dart';
 import '../providers/supabase_provider.dart';
+import 'sync_scheduler.dart';
 import 'sync_service.dart';
 
 part 'sync_provider.g.dart';
@@ -24,15 +25,33 @@ SyncService syncService(Ref ref) {
   );
 }
 
-@riverpod
+// keepAlive: the controller owns the write-triggered SyncScheduler, which
+// must outlive individual reads of the notifier.
+@Riverpod(keepAlive: true)
 class SyncController extends _$SyncController {
+  Future<void>? _inFlight;
+
   @override
-  Future<void> build() async {}
+  Future<void> build() async {
+    final scheduler = SyncScheduler(
+      boxes: [
+        ref.read(categoryBoxProvider),
+        ref.read(transactionBoxProvider),
+        ref.read(wishlistBoxProvider),
+      ],
+      onSync: syncNow,
+    );
+    ref.onDispose(scheduler.dispose);
+  }
 
   /// Never throws: local data stays usable offline-first and the next
   /// start/resume retries. Failures are logged and surfaced as this
   /// controller's [AsyncError] state, and whatever did sync is still applied.
-  Future<void> syncNow() async {
+  ///
+  /// Concurrent calls (resume, login, write-triggered) share one run.
+  Future<void> syncNow() => _inFlight ??= _syncNow().whenComplete(() => _inFlight = null);
+
+  Future<void> _syncNow() async {
     final userId = ref.read(currentUserProvider)?.id;
     if (userId == null) return;
 

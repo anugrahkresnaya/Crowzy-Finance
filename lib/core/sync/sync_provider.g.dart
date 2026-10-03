@@ -61,7 +61,7 @@ final class SyncControllerProvider
         argument: null,
         retry: null,
         name: r'syncControllerProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -74,7 +74,7 @@ final class SyncControllerProvider
   SyncController create() => SyncController();
 }
 
-String _$syncControllerHash() => r'90cc7a9d56cad41a24f4eae2383205b851a9dbf4';
+String _$syncControllerHash() => r'58289a3dd3113b8c43e52b9d8f507685d7289302';
 
 abstract class _$SyncController extends $AsyncNotifier<void> {
   FutureOr<void> build();
