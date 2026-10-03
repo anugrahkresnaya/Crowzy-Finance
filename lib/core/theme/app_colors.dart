@@ -49,4 +49,5 @@ class AppColors {
   static const Color inkMuted = Color(0xFF5B5F55);
   static const Color inkRule = Color(0xFF8C8672);
   static const Color oxblood = Color(0xFF7A2E1F);
+  static const Color inkIncome = Color(0xFF2F5D3A);
 }

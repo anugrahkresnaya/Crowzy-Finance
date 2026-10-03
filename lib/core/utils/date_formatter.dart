@@ -9,12 +9,24 @@ class DateFormatter {
   static final _weekday = DateFormat('EEEE');
   static final _monthName = DateFormat('MMMM');
   static final _monthYearShort = DateFormat('MMM yyyy');
+  static final _receiptDate = DateFormat('EEE d MMM yyyy');
+  static final _receiptDateLong = DateFormat('EEE d MMMM yyyy');
+  static final _time = DateFormat('HH:mm');
 
   static String day(DateTime date) => _day.format(date);
   static String dayShort(DateTime date) => _dayShort.format(date);
   static String monthYear(DateTime date) => _monthYear.format(date);
   static String monthName(DateTime date) => _monthName.format(date);
   static String monthYearShort(DateTime date) => _monthYearShort.format(date);
+
+  /// "Sat 3 Oct 2026"
+  static String receiptDate(DateTime date) => _receiptDate.format(date);
+
+  /// "Sat 3 October 2026"
+  static String receiptDateLong(DateTime date) => _receiptDateLong.format(date);
+
+  /// "09:12"
+  static String time(DateTime date) => _time.format(date);
   static String weekday(DateTime date) => _weekday.format(date);
 
   static final _dayLong = DateFormat('d MMMM');
