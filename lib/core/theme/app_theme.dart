@@ -34,7 +34,6 @@ class AppTheme {
       cardTheme: _cardTheme(),
       bottomSheetTheme: _bottomSheetTheme(),
       dialogTheme: _dialogTheme(textTheme),
-      navigationBarTheme: _navigationBarTheme(colorScheme, textTheme),
       chipTheme: _chipTheme(colorScheme, textTheme),
       tabBarTheme: _tabBarTheme(colorScheme, textTheme),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -275,30 +274,6 @@ class AppTheme {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
         side: const BorderSide(color: AppColors.hairline),
-      ),
-    );
-  }
-
-  // Replaced by the custom pill bar in a later phase; restyled meanwhile so the
-  // app is coherent in the new palette.
-  static NavigationBarThemeData _navigationBarTheme(ColorScheme scheme, TextTheme textTheme) {
-    return NavigationBarThemeData(
-      height: 68,
-      elevation: 0,
-      backgroundColor: AppColors.surface,
-      surfaceTintColor: Colors.transparent,
-      indicatorColor: AppColors.brass,
-      indicatorShape: const StadiumBorder(),
-      labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => textTheme.labelMedium?.copyWith(
-          fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-          color: states.contains(WidgetState.selected) ? AppColors.brass : AppColors.textLabel,
-        ),
-      ),
-      iconTheme: WidgetStateProperty.resolveWith(
-        (states) => IconThemeData(
-          color: states.contains(WidgetState.selected) ? AppColors.background : AppColors.textLabel,
-        ),
       ),
     );
   }

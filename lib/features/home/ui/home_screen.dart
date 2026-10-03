@@ -6,7 +6,6 @@ import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
 import '../../../core/widgets/gradient_balance_card.dart';
-import '../../ai_analyzer/ui/ai_analyzer_screen.dart';
 import '../../ai_analyzer/ui/widgets/passive_insight_card.dart';
 import '../../alerts/providers/alert_provider.dart';
 import '../../alerts/ui/alerts_list_screen.dart';
@@ -14,8 +13,8 @@ import '../../alerts/ui/widgets/alert_tile.dart';
 import '../../alerts/ui/widgets/alerts_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
+import '../../categories/ui/category_list_screen.dart';
 import '../../transactions/providers/transaction_provider.dart';
-import '../../transactions/ui/add_edit_transaction_screen.dart';
 import '../../transactions/ui/transaction_list_screen.dart';
 import '../../transactions/ui/widgets/transaction_tile.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
@@ -41,20 +40,11 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Crowzy Finance'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.auto_awesome_outlined),
-            tooltip: 'Add with AI',
-            onPressed: () => pushSlide(context, const AiAnalyzerScreen()),
-          ),
-          IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Log out',
             onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => pushSlide(context, const AddEditTransactionScreen()),
-        child: const Icon(Icons.add),
       ),
       body: SafeArea(
         child: ListView(
@@ -169,6 +159,17 @@ class HomeScreen extends ConsumerWidget {
                   );
                 },
               ),
+            const SizedBox(height: 28),
+            Text('Manage', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.category_outlined),
+                title: const Text('Categories'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => pushSlide(context, const CategoryListScreen()),
+              ),
+            ),
           ],
         ),
       ),

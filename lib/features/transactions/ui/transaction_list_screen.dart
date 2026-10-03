@@ -98,10 +98,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => pushSlide(context, const AddEditTransactionScreen()),
-        child: const Icon(Icons.add),
-      ),
       body: Column(
         children: [
           if (_dateRange != null || _categoryId != null || _sort != TransactionSort.newest)
