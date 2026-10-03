@@ -19,6 +19,7 @@ Future<void> main() async {
   await Hive.openBox<Map>(HiveConstants.categoriesBox);
   await Hive.openBox<Map>(HiveConstants.transactionsBox);
   await Hive.openBox<Map>(HiveConstants.wishlistBox);
+  await Hive.openBox<Map>(HiveConstants.budgetsBox);
   await Hive.openBox<Map>(HiveConstants.alertsBox);
   await Hive.openBox(HiveConstants.syncMetaBox);
 

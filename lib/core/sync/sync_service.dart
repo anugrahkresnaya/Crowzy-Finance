@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/models/alert_model.dart';
+import '../../data/models/budget_model.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/models/wishlist_model.dart';
@@ -33,6 +34,7 @@ class SyncService {
     this._categoryBox,
     this._transactionBox,
     this._wishlistBox,
+    this._budgetBox,
     this._alertsBox,
     this._syncMetaBox,
   );
@@ -41,6 +43,7 @@ class SyncService {
   final Box<Map> _categoryBox;
   final Box<Map> _transactionBox;
   final Box<Map> _wishlistBox;
+  final Box<Map> _budgetBox;
   final Box<Map> _alertsBox;
   final Box _syncMetaBox;
 
@@ -65,9 +68,11 @@ class SyncService {
     await run('push categories', _pushCategories);
     await run('push transactions', _pushTransactions);
     await run('push wishlist', _pushWishlist);
+    await run('push budgets', _pushBudgets);
     await run('pull categories', () => _pullCategories(userId));
     await run('pull transactions', () => _pullTransactions(userId));
     await run('pull wishlist', () => _pullWishlist(userId));
+    await run('pull budgets', () => _pullBudgets(userId));
     await run('pull alerts', () => _pullAlerts(userId));
 
     if (failures.isNotEmpty) throw SyncException(failures);
@@ -109,6 +114,19 @@ class SyncService {
     await _client.from('wishlist').upsert(dirty.map((g) => g.toSupabaseRow()).toList());
     for (final goal in dirty) {
       await _wishlistBox.put(goal.id, goal.copyWith(isSynced: true).toJson());
+    }
+  }
+
+  Future<void> _pushBudgets() async {
+    final dirty = _budgetBox.values
+        .map((raw) => BudgetModel.fromJson(Map<String, dynamic>.from(raw)))
+        .where((budget) => !budget.isSynced)
+        .toList();
+    if (dirty.isEmpty) return;
+
+    await _client.from('budgets').upsert(dirty.map((b) => b.toSupabaseRow()).toList());
+    for (final budget in dirty) {
+      await _budgetBox.put(budget.id, budget.copyWith(isSynced: true).toJson());
     }
   }
 
@@ -202,6 +220,35 @@ class SyncService {
     if (newestSeen != null) await _setLastSyncedAt('wishlist', userId, newestSeen);
   }
 
+  Future<void> _pullBudgets(String userId) async {
+    final since = _lastSyncedAt('budgets', userId);
+    var offset = 0;
+    DateTime? newestSeen;
+
+    while (true) {
+      final rows = await _client
+          .from('budgets')
+          .select()
+          .eq('user_id', userId)
+          .gt('updated_at', since.toIso8601String())
+          .order('updated_at')
+          .range(offset, offset + _pageSize - 1);
+      if (rows.isEmpty) break;
+
+      for (final row in rows) {
+        final remote = BudgetModel.fromJson(Map<String, dynamic>.from(row)).copyWith(isSynced: true);
+        await _mergeBudget(remote);
+        if (newestSeen == null || remote.updatedAt.isAfter(newestSeen)) {
+          newestSeen = remote.updatedAt;
+        }
+      }
+      if (rows.length < _pageSize) break;
+      offset += _pageSize;
+    }
+
+    if (newestSeen != null) await _setLastSyncedAt('budgets', userId, newestSeen);
+  }
+
   /// Alerts are server-authored — there is no _pushAlerts, only a pull.
   Future<void> _pullAlerts(String userId) async {
     final since = _lastSyncedAt('alerts', userId);
@@ -257,6 +304,15 @@ class SyncService {
       if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
     }
     await _wishlistBox.put(remote.id, remote.toJson());
+  }
+
+  Future<void> _mergeBudget(BudgetModel remote) async {
+    final raw = _budgetBox.get(remote.id);
+    if (raw != null) {
+      final local = BudgetModel.fromJson(Map<String, dynamic>.from(raw));
+      if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
+    }
+    await _budgetBox.put(remote.id, remote.toJson());
   }
 
   /// Unlike the other merges, this isn't a last-write-wins timestamp

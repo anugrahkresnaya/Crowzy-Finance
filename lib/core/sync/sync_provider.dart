@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/alerts/providers/alert_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/budgets/providers/budget_provider.dart';
 import '../../features/categories/providers/category_provider.dart';
 import '../../features/transactions/providers/transaction_provider.dart';
 import '../../features/wishlist/providers/wishlist_provider.dart';
@@ -20,6 +21,7 @@ SyncService syncService(Ref ref) {
     ref.watch(categoryBoxProvider),
     ref.watch(transactionBoxProvider),
     ref.watch(wishlistBoxProvider),
+    ref.watch(budgetsBoxProvider),
     ref.watch(alertsBoxProvider),
     ref.watch(syncMetaBoxProvider),
   );
@@ -38,6 +40,7 @@ class SyncController extends _$SyncController {
         ref.read(categoryBoxProvider),
         ref.read(transactionBoxProvider),
         ref.read(wishlistBoxProvider),
+        ref.read(budgetsBoxProvider),
       ],
       onSync: syncNow,
     );
