@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/widgets/app_progress_bar.dart';
+import '../../../../core/widgets/press_scale.dart';
 import '../../../../data/models/wishlist_model.dart';
 
 class WishlistTile extends StatelessWidget {
@@ -27,79 +30,80 @@ class WishlistTile extends StatelessWidget {
     final progress = goal.targetAmount > 0
         ? (goal.currentAmount / goal.targetAmount).clamp(0.0, 1.0)
         : 0.0;
+    final textTheme = Theme.of(context).textTheme;
 
     return Opacity(
-      opacity: deEmphasized ? 0.6 : 1.0,
-      child: Card(
-        child: InkWell(
-          onTap: isCompleted ? null : onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        goal.name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(fontWeight: FontWeight.w600),
+      opacity: deEmphasized ? 0.65 : 1.0,
+      child: PressScale(
+        enabled: !isCompleted && onTap != null,
+        child: Material(
+          color: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: const BorderSide(color: AppColors.hairlineSoft),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: isCompleted ? null : onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          goal.name,
+                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                        ),
                       ),
-                    ),
-                    if (isCompleted)
-                      _Badge(label: 'Goal reached', color: AppColors.income)
-                    else if (isExpired)
-                      _Badge(
-                        label: 'Deadline passed',
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    if (onEdit != null)
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                        onPressed: onEdit,
-                      ),
-                    if (onDelete != null)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        onPressed: onDelete,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: AppColors.seed.withValues(alpha: 0.12),
-                    valueColor: AlwaysStoppedAnimation(
-                      isCompleted ? AppColors.income : AppColors.seed,
-                    ),
+                      if (isCompleted)
+                        const _Badge(label: 'Goal reached', color: AppColors.income)
+                      else if (isExpired)
+                        const _Badge(label: 'Deadline passed', color: AppColors.textMuted),
+                      if (onEdit != null)
+                        IconButton(
+                          tooltip: 'Edit',
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          color: AppColors.textFaint,
+                          onPressed: onEdit,
+                        ),
+                      if (onDelete != null)
+                        IconButton(
+                          tooltip: 'Delete',
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          color: AppColors.textFaint,
+                          onPressed: onDelete,
+                        ),
+                      const SizedBox(width: 6),
+                      Text('${(progress * 100).round()}%', style: AppText.amount(context, size: 22)),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${CurrencyFormatter.format(goal.currentAmount)} / '
-                      '${CurrencyFormatter.format(goal.targetAmount)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    if (goal.deadline != null)
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Text(
-                        DateFormatter.day(goal.deadline!),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                        '${CurrencyFormatter.format(goal.currentAmount)} of '
+                        '${CurrencyFormatter.format(goal.targetAmount)}',
+                        style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
                       ),
-                  ],
-                ),
-              ],
+                      if (goal.deadline != null)
+                        Text(
+                          DateFormatter.day(goal.deadline!),
+                          style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AppProgressBar(
+                    value: progress,
+                    color: isCompleted ? AppColors.income : AppColors.brass,
+                    semanticLabel: '${goal.name} progress',
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -117,10 +121,10 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
         label,

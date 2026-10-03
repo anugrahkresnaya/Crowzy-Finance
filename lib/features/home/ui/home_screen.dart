@@ -5,7 +5,7 @@ import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
-import '../../../core/widgets/gradient_balance_card.dart';
+import '../../../core/widgets/balance_card.dart';
 import '../../ai_analyzer/ui/widgets/passive_insight_card.dart';
 import '../../alerts/providers/alert_provider.dart';
 import '../../alerts/ui/alerts_list_screen.dart';
@@ -28,7 +28,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final allTimeBalance = ref.watch(allTimeBalanceProvider);
-    final thisMonthBalance = ref.watch(thisMonthBalanceProvider);
+    final month = ref.watch(thisMonthSummaryProvider);
     final recentTransactions = ref.watch(recentTransactionsProvider);
     final activeGoals = ref.watch(activeWishlistGoalsProvider);
     final unreadAlerts = ref.watch(unreadAlertsProvider);
@@ -57,9 +57,11 @@ class HomeScreen extends ConsumerWidget {
                   ),
             ),
             const SizedBox(height: 16),
-            GradientBalanceCard(
-              allTimeBalance: allTimeBalance,
-              thisMonthBalance: thisMonthBalance,
+            BalanceCard(
+              balance: allTimeBalance,
+              monthIncome: month.income,
+              monthExpense: month.expense,
+              changePercent: month.changePercent,
             ).entrance(context, duration: AppMotion.slow),
             const PassiveInsightCard().entrance(
               context,
@@ -93,7 +95,7 @@ class HomeScreen extends ConsumerWidget {
                   final (index, transaction) = entry;
                   return Padding(
                     key: ValueKey(transaction.id),
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: EdgeInsets.zero,
                     child: TransactionTile(
                       transaction: transaction,
                       category: categoryById[transaction.categoryId],

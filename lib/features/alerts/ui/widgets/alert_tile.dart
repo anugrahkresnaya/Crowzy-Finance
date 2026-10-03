@@ -2,15 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/widgets/press_scale.dart';
 import '../../../../data/models/alert_model.dart';
 import '../../../../data/models/alert_type.dart';
 
-(IconData, Color) _alertVisuals(AlertType type) {
+({IconData icon, Color color, String title}) _alertVisuals(AlertType type) {
   return switch (type) {
-    AlertType.categorySpike => (Icons.trending_up_rounded, AppColors.expense),
-    AlertType.overspend => (Icons.warning_amber_rounded, AppColors.error),
-    AlertType.wishlistOffPace => (Icons.flag_outlined, AppColors.seed),
-    AlertType.incomeDrop => (Icons.trending_down_rounded, AppColors.error),
+    AlertType.categorySpike => (
+        icon: Icons.trending_up_rounded,
+        color: AppColors.expense,
+        title: 'Unusual spending',
+      ),
+    AlertType.overspend => (
+        icon: Icons.warning_amber_rounded,
+        color: AppColors.expense,
+        title: 'Overspending',
+      ),
+    AlertType.wishlistOffPace => (
+        icon: Icons.flag_outlined,
+        color: AppColors.brass,
+        title: 'Goal off pace',
+      ),
+    AlertType.incomeDrop => (
+        icon: Icons.trending_down_rounded,
+        color: AppColors.expense,
+        title: 'Income drop',
+      ),
   };
 }
 
@@ -22,56 +39,85 @@ class AlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (icon, iconColor) = _alertVisuals(alert.type);
+    final visuals = _alertVisuals(alert.type);
     final isUnread = alert.isUnread;
+    final textTheme = Theme.of(context).textTheme;
 
-    return Opacity(
-      opacity: isUnread ? 1.0 : 0.6,
-      child: Card(
+    return PressScale(
+      enabled: onTap != null,
+      child: Material(
+        color: isUnread ? AppColors.noticeBackground : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: isUnread ? AppColors.noticeBorder : AppColors.hairlineSoft),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
+                    color: isUnread ? AppColors.noticeIcon : AppColors.surface,
+                    border: Border.all(
+                      color: isUnread ? AppColors.noticeBorder : AppColors.hairline,
+                    ),
                   ),
-                  child: Icon(icon, color: iconColor, size: 20),
+                  child: Icon(visuals.icon, color: visuals.color, size: 19),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        alert.message,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              visuals.title,
+                              style: textTheme.bodyLarge?.copyWith(
+                                fontWeight: isUnread ? FontWeight.w600 : FontWeight.w500,
+                                color: isUnread ? AppColors.ivory : AppColors.textSoft,
+                              ),
                             ),
+                          ),
+                          if (isUnread)
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: AppColors.expense,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        DateFormatter.day(alert.createdAt),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                        alert.message,
+                        style: textTheme.bodyMedium?.copyWith(
+                          height: 1.45,
+                          color: isUnread ? AppColors.textSoft : AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        DateFormatter.ago(alert.createdAt).toUpperCase(),
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          letterSpacing: 11 * 0.12,
+                          color: isUnread ? AppColors.textMuted : AppColors.textFaint,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                if (isUnread)
-                  Container(
-                    margin: const EdgeInsets.only(top: 4, left: 8),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: AppColors.seed, shape: BoxShape.circle),
-                  ),
               ],
             ),
           ),

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/icon_mapper.dart';
+import '../../../../core/widgets/press_scale.dart';
 import '../../../../data/models/category_model.dart';
 import '../../../../data/models/transaction_model.dart';
 import '../../../../data/models/transaction_type.dart';
 
+/// One transaction as a hairline-divided row. The note is the headline when
+/// there is one (the category name otherwise); the line beneath combines the
+/// date (when [showDate]) and the category.
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
     super.key,
@@ -28,70 +33,83 @@ class TransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
     final color = isIncome ? AppColors.income : AppColors.expense;
-    final sign = isIncome ? '+' : '-';
-    final note = transaction.note?.isNotEmpty == true ? transaction.note : null;
+    final categoryName = category?.name ?? 'Uncategorized';
+    final note = transaction.note?.isNotEmpty == true ? transaction.note! : null;
+    final title = note ?? categoryName;
     final subtitle = [
-      if (showDate) DateFormatter.day(transaction.date),
-      ?note,
+      if (showDate) DateFormatter.relativeDay(transaction.date),
+      if (note != null) categoryName,
     ].join(' · ');
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [color.withValues(alpha: 0.22), color.withValues(alpha: 0.1)],
+    return PressScale(
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AppColors.divider)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surface,
+                    border: Border.all(color: AppColors.hairline),
+                  ),
+                  child: Icon(
+                    IconMapper.iconFor(category?.icon ?? 'category'),
+                    color: AppColors.brass,
+                    size: 19,
                   ),
                 ),
-                child: Icon(IconMapper.iconFor(category?.icon ?? 'category'), color: color),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      category?.name ?? 'Uncategorized',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subtitle,
+                        title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w500),
                       ),
+                      if (subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: AppColors.textMuted),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              Text(
-                '$sign${CurrencyFormatter.format(transaction.amount)}',
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
-              ),
-              if (onDelete != null)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20),
-                  onPressed: onDelete,
+                const SizedBox(width: 8),
+                Text(
+                  CurrencyFormatter.signed(transaction.amount, income: isIncome),
+                  style: AppText.amount(context, color: color),
                 ),
-            ],
+                if (onDelete != null)
+                  IconButton(
+                    tooltip: 'Delete',
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    color: AppColors.textFaint,
+                    onPressed: onDelete,
+                  ),
+              ],
+            ),
           ),
         ),
       ),

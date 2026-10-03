@@ -1,3 +1,4 @@
+import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/features/transactions/ui/widgets/transaction_tile.dart';
@@ -5,42 +6,106 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  TransactionModel tx({String? note}) => TransactionModel(
+  final now = DateTime.now();
+
+  TransactionModel tx({
+    String? note,
+    DateTime? date,
+    TransactionType type = TransactionType.expense,
+  }) =>
+      TransactionModel(
         id: 't1',
         userId: 'u1',
         amount: 25000,
-        type: TransactionType.expense,
+        type: type,
         categoryId: 'c1',
         note: note,
-        date: DateTime(2026, 10, 3),
-        createdAt: DateTime(2026, 10, 3),
-        updatedAt: DateTime(2026, 10, 3),
+        date: date ?? now,
+        createdAt: now,
+        updatedAt: now,
       );
+
+  final food = CategoryModel(
+    id: 'c1',
+    name: 'Food',
+    icon: 'restaurant',
+    type: TransactionType.expense,
+    createdAt: now,
+    updatedAt: now,
+  );
 
   Future<void> pump(WidgetTester tester, TransactionTile tile) =>
       tester.pumpWidget(MaterialApp(home: Scaffold(body: tile)));
 
-  testWidgets('shows the date by default', (tester) async {
+  testWidgets('shows a relative date under the category by default', (tester) async {
+    await pump(tester, TransactionTile(transaction: tx(), category: food));
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
+  });
+
+  testWidgets('uses the note as the headline and the category in the subtitle', (tester) async {
+    await pump(tester, TransactionTile(transaction: tx(note: 'Lunch'), category: food));
+    expect(find.text('Lunch'), findsOneWidget);
+    expect(find.text('Today · Food'), findsOneWidget);
+  });
+
+  testWidgets('falls back to Uncategorized when the category is missing', (tester) async {
     await pump(tester, TransactionTile(transaction: tx(), category: null));
-    expect(find.text('3 Oct 2026'), findsOneWidget);
+    expect(find.text('Uncategorized'), findsOneWidget);
   });
 
-  testWidgets('combines date and note on one line', (tester) async {
-    await pump(tester, TransactionTile(transaction: tx(note: 'Lunch'), category: null));
-    expect(find.text('3 Oct 2026 · Lunch'), findsOneWidget);
-  });
-
-  testWidgets('hides the date when showDate is false, keeping the note', (tester) async {
+  testWidgets('hides the date when showDate is false, keeping the category', (tester) async {
     await pump(
       tester,
-      TransactionTile(transaction: tx(note: 'Lunch'), category: null, showDate: false),
+      TransactionTile(transaction: tx(note: 'Lunch'), category: food, showDate: false),
     );
     expect(find.text('Lunch'), findsOneWidget);
-    expect(find.textContaining('Oct'), findsNothing);
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.textContaining('Today'), findsNothing);
   });
 
   testWidgets('shows no subtitle without a date or a note', (tester) async {
-    await pump(tester, TransactionTile(transaction: tx(), category: null, showDate: false));
-    expect(find.textContaining('Oct'), findsNothing);
+    await pump(tester, TransactionTile(transaction: tx(), category: food, showDate: false));
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.byType(Text), findsNWidgets(2)); // title and amount only
+  });
+
+  testWidgets('older transactions show the full date including the year', (tester) async {
+    await pump(
+      tester,
+      TransactionTile(transaction: tx(date: DateTime(2020, 1, 5)), category: food),
+    );
+    expect(find.text('5 Jan 2020'), findsOneWidget);
+  });
+
+  testWidgets('signs the amount with a true minus or a plus', (tester) async {
+    await pump(tester, TransactionTile(transaction: tx(), category: food));
+    expect(find.text('−25.000'), findsOneWidget);
+
+    await pump(
+      tester,
+      TransactionTile(transaction: tx(type: TransactionType.income), category: food),
+    );
+    expect(find.text('+25.000'), findsOneWidget);
+  });
+
+  testWidgets('forwards taps and the delete action', (tester) async {
+    var taps = 0;
+    var deletes = 0;
+    await pump(
+      tester,
+      TransactionTile(
+        transaction: tx(),
+        category: food,
+        onTap: () => taps++,
+        onDelete: () => deletes++,
+      ),
+    );
+
+    await tester.tap(find.text('Food'));
+    await tester.tap(find.byTooltip('Delete'));
+
+    expect(taps, 1);
+    expect(deletes, 1);
   });
 }

@@ -23,6 +23,7 @@ class AppColors {
   static const Color textLabel = Color(0xFFB4BBA9);
   static const Color textMuted = Color(0xFFA3AA9C);
   static const Color textFaint = Color(0xFF8A9187);
+  static const Color textSoft = Color(0xFFC9C1AE);
 
   // Brass accent
   static const Color brass = Color(0xFFD8C08A);
@@ -34,6 +35,7 @@ class AppColors {
   static const Color burgundyBorder = Color(0xFF6A2D3A);
   static const Color noticeBackground = Color(0xFF1A1113);
   static const Color noticeBorder = Color(0xFF4A2A30);
+  static const Color noticeIcon = Color(0xFF2A171B);
 
   // Semantic
   static const Color income = Color(0xFF9DBF9A);
@@ -46,16 +48,4 @@ class AppColors {
   static const Color inkMuted = Color(0xFF5B5F55);
   static const Color inkRule = Color(0xFF8C8672);
   static const Color oxblood = Color(0xFF7A2E1F);
-
-  // Legacy names kept so existing widgets compile until they are restyled in
-  // later phases; each maps to the closest new token.
-  static const Color seed = brass;
-  static const Color seedLight = brass;
-  static const Color darkBackground = background;
-  static const Color darkSurface = surface;
-  static const Color darkSurfaceHigh = hero;
-  static const Color gradientStart = background;
-  static const Color gradientMid = hero;
-  static const Color gradientEnd = heroBorder;
-  static const Color blobAccent = brassOutline;
 }

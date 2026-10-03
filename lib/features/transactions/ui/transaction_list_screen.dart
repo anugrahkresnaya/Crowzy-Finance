@@ -168,7 +168,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                     final transaction = filtered[index];
                     return Padding(
                       key: ValueKey(transaction.id),
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: EdgeInsets.zero,
                       child: TransactionTile(
                         transaction: transaction,
                         category: categoryById[transaction.categoryId],
