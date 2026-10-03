@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../data/models/ai_transaction_suggestion.dart';
@@ -14,19 +15,74 @@ import '../providers/ai_analyzer_provider.dart';
 import 'widgets/ai_suggestion_confirm_sheet.dart';
 import 'widgets/chat_qa_tab.dart';
 
-class AiAnalyzerScreen extends StatelessWidget {
-  const AiAnalyzerScreen({super.key});
+enum AiMode { ask, add }
+
+/// The assistant: ask questions about your money, or describe a transaction
+/// and let it fill in the details. Shown as a tab, or pushed (for example from
+/// the new-transaction form) straight into [initialMode].
+class AiAnalyzerScreen extends StatefulWidget {
+  const AiAnalyzerScreen({super.key, this.initialMode = AiMode.ask});
+
+  final AiMode initialMode;
+
+  @override
+  State<AiAnalyzerScreen> createState() => _AiAnalyzerScreenState();
+}
+
+class _AiAnalyzerScreenState extends State<AiAnalyzerScreen> {
+  late AiMode _mode = widget.initialMode;
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('AI Assistant'),
-          bottom: const TabBar(tabs: [Tab(text: 'Add'), Tab(text: 'Ask')]),
+    final canGoBack = Navigator.of(context).canPop();
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(canGoBack ? 6 : 22, 12, 22, 0),
+              child: Row(
+                children: [
+                  if (canGoBack)
+                    IconButton(
+                      tooltip: 'Back',
+                      icon: const Icon(Icons.chevron_left_rounded, size: 28),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  const Icon(Icons.auto_awesome_outlined, size: 22, color: AppColors.brass),
+                  const SizedBox(width: 10),
+                  Text(
+                    _mode == AiMode.ask ? 'Ask' : 'Add',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 32),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 14, 22, 4),
+              child: SegmentedButton<AiMode>(
+                showSelectedIcon: false,
+                expandedInsets: EdgeInsets.zero,
+                segments: const [
+                  ButtonSegment(value: AiMode.ask, label: Text('Ask')),
+                  ButtonSegment(value: AiMode.add, label: Text('Add')),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (selection) => setState(() => _mode = selection.first),
+              ),
+            ),
+            // Both stay alive so a half-written message or a conversation
+            // survives switching between them.
+            Expanded(
+              child: IndexedStack(
+                index: _mode.index,
+                children: const [ChatQaTab(), _AddTab()],
+              ),
+            ),
+          ],
         ),
-        body: const TabBarView(children: [_AddTab(), ChatQaTab()]),
       ),
     );
   }
@@ -118,20 +174,22 @@ class _AddTabState extends ConsumerState<_AddTab> {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               'Describe a transaction in plain text and AI will fill in the details for you to confirm.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: AppColors.textMuted, height: 1.45),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             AppTextField(
               controller: _textController,
-              label: 'e.g. "spent 50k on coffee today"',
+              label: 'Transaction',
+              hint: 'e.g. "spent 50k on coffee today"',
               minLines: 2,
               maxLines: 4,
               enabled: !isLoading,
@@ -152,7 +210,7 @@ class _AddTabState extends ConsumerState<_AddTab> {
               const SizedBox(height: 16),
               Text(
                 '$error',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: const TextStyle(color: AppColors.error),
               ),
               const SizedBox(height: 8),
               OutlinedButton(

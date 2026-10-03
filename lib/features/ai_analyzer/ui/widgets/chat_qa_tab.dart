@@ -2,8 +2,9 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/widgets/app_text_field.dart';
 import '../../../../data/models/ai_correction_intent.dart';
 import '../../../../data/models/chat_message.dart';
 import '../../../../data/models/transaction_model.dart';
@@ -13,6 +14,7 @@ import '../../providers/chat_qa_provider.dart';
 import 'chat_message_bubble.dart';
 import 'correction_candidate_picker_sheet.dart';
 import 'correction_confirm_sheet.dart';
+import 'passive_insight_card.dart';
 
 const _exampleQuestions = [
   'How much did I spend on food last week?',
@@ -43,8 +45,8 @@ class _ChatQaTabState extends ConsumerState<ChatQaTab> {
       if (!_scrollController.hasClients) return;
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
+        duration: AppMotion.scaled(context, AppMotion.base),
+        curve: AppMotion.curveOut,
       );
     });
   }
@@ -112,67 +114,50 @@ class _ChatQaTabState extends ConsumerState<ChatQaTab> {
     });
 
     final state = ref.watch(chatQaProvider);
-    final colorScheme = Theme.of(context).colorScheme;
+    final hasMessages = state.messages.isNotEmpty;
 
-    return SafeArea(
-      child: Column(
-        children: [
-          Expanded(
-            child: state.messages.isEmpty
-                ? _EmptyState(onExampleTap: _send)
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: state.messages.length + (state.isLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == state.messages.length) {
-                        return Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Text(
-                              'Thinking…',
-                              style: TextStyle(color: colorScheme.onSurfaceVariant),
-                            ),
-                          ),
-                        );
-                      }
-                      final message = state.messages[index];
-                      return ChatMessageBubble(
-                        message: message,
-                        onRetry: message.isError ? () => _retry(state, index) : null,
-                      );
-                    },
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 12),
+            children: [
+              const PassiveInsightCard(),
+              if (!hasMessages)
+                _EmptyState(onExampleTap: _send)
+              else ...[
+                const SizedBox(height: 14),
+                for (final (index, message) in state.messages.indexed)
+                  ChatMessageBubble(
+                    key: ValueKey(message.id),
+                    message: message,
+                    onRetry: message.isError ? () => _retry(state, index) : null,
                   ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      controller: _textController,
-                      label: 'Ask about your spending',
-                      enabled: !state.isLoading,
-                      textInputAction: TextInputAction.send,
-                      minLines: 1,
-                      maxLines: 3,
+                if (state.isLoading)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Thinking…',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: AppColors.textMuted),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: state.isLoading ? null : () => _send(),
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+              ],
+            ],
           ),
-        ],
-      ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 4, 22, 8),
+          child: _InputBar(
+            controller: _textController,
+            enabled: !state.isLoading,
+            onSend: _send,
+          ),
+        ),
+      ],
     );
   }
 
@@ -195,17 +180,17 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.only(top: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             'Ask a question about your income, spending, or goals.',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: AppColors.textMuted, height: 1.45),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -222,6 +207,50 @@ class _EmptyState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A rounded message field with a brass send button.
+class _InputBar extends StatelessWidget {
+  const _InputBar({required this.controller, required this.enabled, required this.onSend});
+
+  final TextEditingController controller;
+  final bool enabled;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: enabled,
+            minLines: 1,
+            maxLines: 3,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) => onSend(),
+            decoration: const InputDecoration(
+              hintText: 'Ask about your spending',
+              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filled(
+          tooltip: 'Send',
+          onPressed: enabled ? onSend : null,
+          style: IconButton.styleFrom(
+            fixedSize: const Size(52, 52),
+            backgroundColor: AppColors.brass,
+            foregroundColor: AppColors.background,
+            disabledBackgroundColor: AppColors.brassDim,
+          ),
+          icon: const Icon(Icons.arrow_upward_rounded),
+        ),
+      ],
     );
   }
 }
