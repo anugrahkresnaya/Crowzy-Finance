@@ -36,6 +36,16 @@ class AppTheme {
       dialogTheme: _dialogTheme(textTheme),
       chipTheme: _chipTheme(colorScheme, textTheme),
       tabBarTheme: _tabBarTheme(colorScheme, textTheme),
+      popupMenuTheme: PopupMenuThemeData(
+        color: AppColors.surfaceHigh,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        textStyle: textTheme.bodyMedium,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.hairline),
+        ),
+      ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.brass,
         linearTrackColor: AppColors.track,
