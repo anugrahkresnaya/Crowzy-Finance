@@ -362,47 +362,6 @@ final class AllTimeBalanceProvider
 
 String _$allTimeBalanceHash() => r'30e3b8595fc9396e503468ec211355cec5c4793a';
 
-@ProviderFor(thisMonthBalance)
-final thisMonthBalanceProvider = ThisMonthBalanceProvider._();
-
-final class ThisMonthBalanceProvider
-    extends $FunctionalProvider<double, double, double>
-    with $Provider<double> {
-  ThisMonthBalanceProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'thisMonthBalanceProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$thisMonthBalanceHash();
-
-  @$internal
-  @override
-  $ProviderElement<double> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  double create(Ref ref) {
-    return thisMonthBalance(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(double value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<double>(value),
-    );
-  }
-}
-
-String _$thisMonthBalanceHash() => r'e2ff422b2d3b20ffc736d6254082f3bf53de1ff3';
-
 @ProviderFor(thisMonthSummary)
 final thisMonthSummaryProvider = ThisMonthSummaryProvider._();
 

@@ -175,7 +175,7 @@ class _PrinterSlot extends StatelessWidget {
     return Container(
       height: 12,
       decoration: BoxDecoration(
-        color: const Color(0xFF050806),
+        color: AppColors.slot,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: AppColors.hairline),
       ),

@@ -22,7 +22,6 @@ class AppMotion {
   static const Duration pageOut = Duration(milliseconds: 300);
   static const Duration sheetIn = Duration(milliseconds: 400);
   static const Duration sheetOut = Duration(milliseconds: 300);
-  static const Duration scrimIn = Duration(milliseconds: 250);
   static const Duration navGlide = Duration(milliseconds: 480);
   static const Duration panelSlide = Duration(milliseconds: 520);
   static const Duration iconColor = Duration(milliseconds: 320);

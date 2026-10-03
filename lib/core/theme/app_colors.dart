@@ -13,6 +13,7 @@ class AppColors {
   static const Color heroBorder = Color(0xFF2F4A3B);
 
   // Lines
+  static const Color slot = Color(0xFF050806);
   static const Color hairline = Color(0xFF2A3A31);
   static const Color hairlineSoft = Color(0xFF243228);
   static const Color divider = Color(0xFF1F2B24);
