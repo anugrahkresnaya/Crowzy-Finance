@@ -75,6 +75,7 @@ class SyncController extends _$SyncController {
     ref.invalidate(transactionListProvider);
     ref.invalidate(wishlistListProvider);
     ref.invalidate(alertListProvider);
+    ref.invalidate(budgetListProvider);
 
     final newUnread = ref.read(unreadAlertsProvider).length - beforeUnread;
     if (newUnread > 0) {
