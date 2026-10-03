@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/entrance.dart';
 import '../../../../data/models/ai_correction_intent.dart';
 import '../../../../data/models/chat_message.dart';
 import '../../../../data/models/transaction_model.dart';
@@ -15,6 +16,7 @@ import 'chat_message_bubble.dart';
 import 'correction_candidate_picker_sheet.dart';
 import 'correction_confirm_sheet.dart';
 import 'passive_insight_card.dart';
+import 'thinking_dots.dart';
 
 const _exampleQuestions = [
   'How much did I spend on food last week?',
@@ -129,22 +131,14 @@ class _ChatQaTabState extends ConsumerState<ChatQaTab> {
               else ...[
                 const SizedBox(height: 14),
                 for (final (index, message) in state.messages.indexed)
-                  ChatMessageBubble(
+                  KeyedSubtree(
                     key: ValueKey(message.id),
-                    message: message,
-                    onRetry: message.isError ? () => _retry(state, index) : null,
+                    child: ChatMessageBubble(
+                      message: message,
+                      onRetry: message.isError ? () => _retry(state, index) : null,
+                    ).entrance(context),
                   ),
-                if (state.isLoading)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Thinking…',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: AppColors.textMuted),
-                    ),
-                  ),
+                if (state.isLoading) const ThinkingDots(),
               ],
             ],
           ),

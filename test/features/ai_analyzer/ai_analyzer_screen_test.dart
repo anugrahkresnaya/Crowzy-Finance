@@ -7,6 +7,7 @@ import 'package:crowzy_finance/features/ai_analyzer/providers/chat_qa_provider.d
 import 'package:crowzy_finance/features/ai_analyzer/providers/passive_insight_provider.dart';
 import 'package:crowzy_finance/features/ai_analyzer/ui/ai_analyzer_screen.dart';
 import 'package:crowzy_finance/features/ai_analyzer/ui/widgets/chat_message_bubble.dart';
+import 'package:crowzy_finance/features/ai_analyzer/ui/widgets/thinking_dots.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,7 +58,12 @@ void main() {
     _parsed.clear();
   });
 
-  Future<void> pump(WidgetTester tester, {AiMode mode = AiMode.ask, bool pushed = false}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    AiMode mode = AiMode.ask,
+    bool pushed = false,
+    bool settle = true,
+  }) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -89,7 +95,12 @@ void main() {
     if (pushed) {
       await tester.tap(find.text('open'));
     }
-    await tester.pumpAndSettle();
+    // The thinking dots loop forever, so a screen showing them cannot settle.
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump(const Duration(seconds: 1));
+    }
   }
 
   group('Ask mode', () {
@@ -148,11 +159,11 @@ void main() {
       expect(find.byType(ChatMessageBubble), findsNothing);
     });
 
-    testWidgets('while the assistant is working it shows Thinking and disables send', (tester) async {
+    testWidgets('while the assistant is working it shows the dots and disables send', (tester) async {
       _initialChat = ChatQaState(messages: [_msg('Hello')], isLoading: true);
-      await pump(tester);
+      await pump(tester, settle: false);
 
-      expect(find.text('Thinking…'), findsOneWidget);
+      expect(find.byType(ThinkingDots), findsOneWidget);
       final send = tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.arrow_upward_rounded));
       expect(send.onPressed, isNull);
     });
@@ -258,6 +269,55 @@ void main() {
 
       await tester.pumpWidget(bubble(_msg('Fine', role: ChatRole.assistant), onRetry: () {}));
       expect(find.byTooltip('Retry'), findsNothing);
+    });
+  });
+
+  group('ThinkingDots', () {
+    Widget host({bool reduced = false}) => MaterialApp(
+          theme: AppTheme.dark,
+          home: MediaQuery(
+            data: MediaQueryData(disableAnimations: reduced),
+            child: const Scaffold(body: ThinkingDots()),
+          ),
+        );
+
+    Finder dotFades() =>
+        find.descendant(of: find.byType(ThinkingDots), matching: find.byType(FadeTransition));
+
+    testWidgets('three dots that pulse, announced as thinking', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(host());
+      await tester.pump(const Duration(milliseconds: 700));
+
+      expect(find.byType(ThinkingDots), findsOneWidget);
+      expect(find.bySemanticsLabel('The assistant is thinking'), findsOneWidget);
+      // One animated opacity per dot.
+      expect(dotFades(), findsNWidgets(3));
+      semantics.dispose();
+    });
+
+    testWidgets('the dots change over time', (tester) async {
+      await tester.pumpWidget(host());
+      double firstDotOpacity() => tester.widgetList<FadeTransition>(dotFades()).first.opacity.value;
+
+      await tester.pump(const Duration(milliseconds: 10));
+      final early = firstDotOpacity();
+      await tester.pump(const Duration(milliseconds: 500));
+      final later = firstDotOpacity();
+
+      expect(later, isNot(closeTo(early, 0.05)));
+    });
+
+    testWidgets('with reduced motion they sit still', (tester) async {
+      await tester.pumpWidget(host(reduced: true));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(dotFades(), findsNothing);
+      expect(
+        find.descendant(of: find.byType(ThinkingDots), matching: find.byType(Opacity)),
+        findsNWidgets(3),
+      );
+      expect(tester.binding.hasScheduledFrame, isFalse);
     });
   });
 }
