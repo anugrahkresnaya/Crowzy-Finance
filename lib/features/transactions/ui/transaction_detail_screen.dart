@@ -101,8 +101,26 @@ class _Receipt extends StatelessWidget {
     final note = transaction.note?.isNotEmpty == true ? transaction.note! : null;
     final amountColor = isIncome ? AppColors.inkIncome : AppColors.oxblood;
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _PrinterSlot(),
+        ReceiptPrint(child: _slip(context, isIncome, categoryName, note, amountColor)),
+      ],
+    );
+  }
+
+  Widget _slip(
+    BuildContext context,
+    bool isIncome,
+    String categoryName,
+    String? note,
+    Color amountColor,
+  ) {
     return ReceiptSlip(
       tornTop: true,
+      animateLines: true,
+      linesDelay: const Duration(milliseconds: 650),
       children: [
         const ReceiptHeading(title: 'CROWZY FINANCE', subtitle: 'TRANSACTION RECEIPT'),
         const ReceiptDivider(),
@@ -144,6 +162,23 @@ class _Receipt extends StatelessWidget {
         const SizedBox(height: 8),
         const ReceiptFooter('THANK YOU FOR TRACKING'),
       ],
+    );
+  }
+}
+
+/// The dark slot the receipt appears to feed out of.
+class _PrinterSlot extends StatelessWidget {
+  const _PrinterSlot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 12,
+      decoration: BoxDecoration(
+        color: const Color(0xFF050806),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.hairline),
+      ),
     );
   }
 }

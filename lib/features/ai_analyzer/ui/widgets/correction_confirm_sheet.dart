@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
@@ -36,6 +37,7 @@ Future<CorrectionConfirmResult?> showCorrectionConfirmSheet(
 }) {
   return showModalBottomSheet<CorrectionConfirmResult>(
     context: context,
+    sheetAnimationStyle: AppMotion.sheetAnimation(context),
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

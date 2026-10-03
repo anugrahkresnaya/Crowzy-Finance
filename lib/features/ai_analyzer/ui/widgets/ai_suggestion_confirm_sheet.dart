@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/utils/amount_input.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
@@ -43,6 +44,7 @@ Future<AiConfirmResult?> showAiSuggestionConfirmSheet(
 ) {
   return showModalBottomSheet<AiConfirmResult>(
     context: context,
+    sheetAnimationStyle: AppMotion.sheetAnimation(context),
     isScrollControlled: true,
     constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
     builder: (context) => _AiSuggestionConfirmSheet(suggestion: suggestion),
@@ -74,6 +76,10 @@ class _AiSuggestionConfirmSheetState
 
   bool _editing = false;
 
+  /// The slip prints in the first time it is shown, not again after you have
+  /// been into the form and back.
+  bool _printed = false;
+
   @override
   void dispose() {
     _amountController.dispose();
@@ -103,7 +109,10 @@ class _AiSuggestionConfirmSheetState
   /// missing piece can be filled in.
   void _add() {
     if (!_canConfirm) {
-      setState(() => _editing = true);
+      setState(() {
+        _editing = true;
+        _printed = true;
+      });
       return;
     }
 
@@ -155,13 +164,26 @@ class _AiSuggestionConfirmSheetState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ReceiptSlip(
+        ReceiptPrint(
+          style: ReceiptPrintStyle.reveal,
+          enabled: !_printed,
+          delay: AppMotion.slipRevealDelay,
+          child: ReceiptSlip(
+          animateLines: !_printed,
+          linesDelay: const Duration(milliseconds: 700),
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
                 const ReceiptHeading(title: 'DRAFT SLIP', subtitle: 'READ FROM YOUR MESSAGE'),
-                const Positioned(right: -6, top: 28, child: ReceiptStamp(text: 'DRAFT')),
+                Positioned(
+                  right: -6,
+                  top: 28,
+                  child: ReceiptStamp(
+                    text: 'DRAFT',
+                    delay: _printed ? null : const Duration(milliseconds: 1150),
+                  ),
+                ),
               ],
             ),
             const ReceiptDivider(margin: EdgeInsets.only(top: 14, bottom: 8)),
@@ -187,6 +209,7 @@ class _AiSuggestionConfirmSheetState
                 style: ReceiptText.muted(context, size: 11).copyWith(fontStyle: FontStyle.italic),
               ),
           ],
+          ),
         ),
         const SizedBox(height: 20),
         FilledButton(onPressed: _add, child: const Text('Add transaction')),
@@ -196,7 +219,10 @@ class _AiSuggestionConfirmSheetState
             Expanded(
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                onPressed: () => setState(() => _editing = true),
+                onPressed: () => setState(() {
+                  _editing = true;
+                  _printed = true;
+                }),
                 child: const Text('Edit details'),
               ),
             ),

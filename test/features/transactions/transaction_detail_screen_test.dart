@@ -6,6 +6,7 @@ import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
 import 'package:crowzy_finance/features/transactions/ui/transaction_detail_screen.dart';
+import 'package:crowzy_finance/core/widgets/receipt_slip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -196,5 +197,33 @@ void main() {
     expect(find.text('This transaction no longer exists'), findsOneWidget);
     expect(find.text('Edit'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the receipt feeds out of a printer slot', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          transactionListProvider.overrideWith(_FakeTransactions.new),
+          categoryListProvider.overrideWith(_FakeCategories.new),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const TransactionDetailScreen(transactionId: 't1'),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50)); // the data arrives and the slip is built
+    await tester.pump(const Duration(milliseconds: 1)); // the feed takes its first tick
+
+    double slipTop() => tester.getTopLeft(find.byType(ReceiptSlip)).dy;
+    final printing = slipTop();
+    await tester.pump(const Duration(seconds: 3));
+    final resting = slipTop();
+
+    // The paper starts a paper-height above its place and comes down into it.
+    expect(printing, lessThan(resting - 100));
+    expect(find.byType(ReceiptPrint), findsOneWidget);
   });
 }

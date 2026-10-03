@@ -4,7 +4,9 @@ import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/features/ai_analyzer/ui/widgets/ai_suggestion_confirm_sheet.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
+import 'package:crowzy_finance/core/widgets/receipt_slip.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -256,6 +258,81 @@ void main() {
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
       expect(find.text('Category'), findsOneWidget); // the dropdown appears
+    });
+  });
+
+  group('printing', () {
+    double revealed(WidgetTester tester) {
+      final clip = tester.renderObject<RenderClipRect>(
+        find.descendant(of: find.byType(ReceiptPrint), matching: find.byType(ClipRect)).first,
+      );
+      return clip.clipper!.getClip(const Size(100, 100)).height;
+    }
+
+    Future<void> openWithoutSettling(WidgetTester tester) async {
+      result = null;
+      finished = false;
+      await tester.binding.setSurfaceSize(const Size(390, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [categoryListProvider.overrideWith(_FakeCategories.new)],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => showAiSuggestionConfirmSheet(context, _suggestion()),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      // Let the sheet finish rising so only the slip is still printing.
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('the slip is unrolled after the sheet rises, then stamped', (tester) async {
+      await openWithoutSettling(tester);
+
+      expect(revealed(tester), lessThan(20)); // still blank when the sheet arrives
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(revealed(tester), greaterThan(20)); // being uncovered
+      await tester.pump(const Duration(seconds: 3));
+      expect(revealed(tester), 100);
+      await tester.pump(const Duration(milliseconds: 500)); // the stamp lands after the lines
+
+      final stamp = tester.widget<FadeTransition>(
+        find.descendant(of: find.byType(ReceiptStamp), matching: find.byType(FadeTransition)),
+      );
+      expect(stamp.opacity.value, 1);
+    });
+
+    testWidgets('it does not print again when you come back from editing', (tester) async {
+      await openWithoutSettling(tester);
+      await tester.pump(const Duration(seconds: 3));
+
+      await tester.tap(find.text('Edit details'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Back to the slip'));
+      await tester.tap(find.text('Back to the slip'));
+      await tester.pump(); // build the slip again
+      await tester.pump(const Duration(milliseconds: 1));
+
+      // Shown straight away: no unrolling and no stamp animation.
+      expect(find.text('DRAFT SLIP'), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(ReceiptPrint), matching: find.byType(ClipRect)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: find.byType(ReceiptStamp), matching: find.byType(FadeTransition)),
+        findsNothing,
+      );
     });
   });
 }

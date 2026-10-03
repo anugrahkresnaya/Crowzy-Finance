@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/widgets/receipt_slip.dart';
@@ -19,6 +20,7 @@ Future<void> showDayReceiptSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    sheetAnimationStyle: AppMotion.sheetAnimation(context),
     isScrollControlled: true,
     showDragHandle: true,
     constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
@@ -70,27 +72,33 @@ class DayReceiptSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ReceiptSlip(
-              children: [
-                ReceiptHeading(
-                  title: 'DAILY RECEIPT',
-                  subtitle: DateFormatter.receiptDateLong(date).toUpperCase(),
-                ),
-                const ReceiptDivider(margin: EdgeInsets.only(top: 14, bottom: 10)),
-                for (final t in lines)
-                  ReceiptLine(
-                    title: _title(t),
-                    caption: '${DateFormatter.time(t.createdAt)} · '
-                        '${(categoryById[t.categoryId]?.name ?? 'Uncategorized').toUpperCase()}',
-                    amount: CurrencyFormatter.signed(t.amount, income: false),
+            ReceiptPrint(
+              style: ReceiptPrintStyle.reveal,
+              delay: AppMotion.slipRevealDelay,
+              child: ReceiptSlip(
+                animateLines: true,
+                linesDelay: const Duration(milliseconds: 750),
+                children: [
+                  ReceiptHeading(
+                    title: 'DAILY RECEIPT',
+                    subtitle: DateFormatter.receiptDateLong(date).toUpperCase(),
                   ),
-                const ReceiptDivider(margin: EdgeInsets.only(top: 12, bottom: 10)),
-                ReceiptTotal(
-                  label: 'TOTAL · $count ${count == 1 ? 'ITEM' : 'ITEMS'}',
-                  amount: CurrencyFormatter.signed(total, income: false),
-                  note: DayDetailCard.multiplierText(total, average).toUpperCase(),
-                ),
-              ],
+                  const ReceiptDivider(margin: EdgeInsets.only(top: 14, bottom: 10)),
+                  for (final t in lines)
+                    ReceiptLine(
+                      title: _title(t),
+                      caption: '${DateFormatter.time(t.createdAt)} · '
+                          '${(categoryById[t.categoryId]?.name ?? 'Uncategorized').toUpperCase()}',
+                      amount: CurrencyFormatter.signed(t.amount, income: false),
+                    ),
+                  const ReceiptDivider(margin: EdgeInsets.only(top: 12, bottom: 10)),
+                  ReceiptTotal(
+                    label: 'TOTAL · $count ${count == 1 ? 'ITEM' : 'ITEMS'}',
+                    amount: CurrencyFormatter.signed(total, income: false),
+                    note: DayDetailCard.multiplierText(total, average).toUpperCase(),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             Row(

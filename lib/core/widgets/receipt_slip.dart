@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_text.dart';
 
 /// A receipt: ivory paper with a torn edge, set in a typewriter face. Used for
@@ -15,11 +17,21 @@ class ReceiptSlip extends StatelessWidget {
     required this.children,
     this.tornTop = false,
     this.tornBottom = true,
+    this.animateLines = false,
+    this.linesDelay = Duration.zero,
   });
 
   final List<Widget> children;
   final bool tornTop;
   final bool tornBottom;
+
+  /// Fade each line in, one after another, as if being printed. Lines past the
+  /// eighth share the last delay so a long receipt never keeps you waiting.
+  final bool animateLines;
+
+  /// How long to wait before the first line appears, e.g. until the paper has
+  /// finished feeding out.
+  final Duration linesDelay;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +48,18 @@ class ReceiptSlip extends StatelessWidget {
         ),
         child: DefaultTextStyle(
           style: ReceiptText.mono(context),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (index, child) in children.indexed)
+                animateLines && !AppMotion.reduced(context)
+                    ? child
+                        .animate(delay: linesDelay + AppMotion.slipLineStep * math.min(index, AppMotion.maxStaggered))
+                        .fadeIn(duration: AppMotion.base, curve: AppMotion.curveOut)
+                        .moveY(begin: 6, end: 0, duration: AppMotion.base, curve: AppMotion.curveOut)
+                    : child,
+            ],
+          ),
         ),
       ),
     );
@@ -295,13 +318,17 @@ class ReceiptTotal extends StatelessWidget {
 
 /// A rotated, outlined word like PAID or DRAFT, stamped on the slip.
 class ReceiptStamp extends StatelessWidget {
-  const ReceiptStamp({super.key, required this.text});
+  const ReceiptStamp({super.key, required this.text, this.delay});
 
   final String text;
 
+  /// When set, the stamp lands after this delay: it starts large and faint
+  /// and presses down to its size.
+  final Duration? delay;
+
   @override
   Widget build(BuildContext context) {
-    return Transform.rotate(
+    final stamp = Transform.rotate(
       angle: -12 * math.pi / 180,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -316,6 +343,19 @@ class ReceiptStamp extends StatelessWidget {
         ),
       ),
     );
+
+    final wait = delay;
+    if (wait == null || AppMotion.reduced(context)) return stamp;
+
+    return stamp
+        .animate(delay: wait)
+        .fadeIn(duration: AppMotion.stampIn, curve: AppMotion.curveOut)
+        .scale(
+          begin: const Offset(1.8, 1.8),
+          end: const Offset(1, 1),
+          duration: AppMotion.stampIn,
+          curve: AppMotion.curveOut,
+        );
   }
 }
 
@@ -376,4 +416,67 @@ class ReceiptFooter extends StatelessWidget {
       style: ReceiptText.muted(context, size: 11).copyWith(letterSpacing: 11 * 0.16),
     );
   }
+}
+
+enum ReceiptPrintStyle {
+  /// The paper feeds down out of a slot above it. For a slip on its own screen.
+  feed,
+
+  /// The paper is uncovered from the top down. For a slip inside a sheet.
+  reveal,
+}
+
+/// Plays a receipt "printing" once when it first appears. The space is
+/// reserved from the start, so nothing around it shifts. With reduced motion
+/// the receipt is simply shown.
+class ReceiptPrint extends StatelessWidget {
+  const ReceiptPrint({
+    super.key,
+    required this.child,
+    this.style = ReceiptPrintStyle.feed,
+    this.delay = Duration.zero,
+    this.enabled = true,
+  });
+
+  final Widget child;
+  final ReceiptPrintStyle style;
+  final Duration delay;
+
+  /// Pass false to show the receipt straight away, e.g. when coming back to
+  /// one that has already been printed.
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled || AppMotion.reduced(context)) return child;
+
+    switch (style) {
+      case ReceiptPrintStyle.feed:
+        return ClipRect(
+          child: child
+              .animate(delay: delay)
+              .slideY(begin: -1, end: 0, duration: AppMotion.slipFeed, curve: AppMotion.curveOut),
+        );
+      case ReceiptPrintStyle.reveal:
+        return child.animate(delay: delay).custom(
+              duration: AppMotion.slipReveal,
+              curve: AppMotion.curveOut,
+              builder: (context, value, child) =>
+                  ClipRect(clipper: _TopRevealClipper(value), child: child),
+            );
+    }
+  }
+}
+
+/// Shows the top [fraction] of whatever it clips.
+class _TopRevealClipper extends CustomClipper<Rect> {
+  const _TopRevealClipper(this.fraction);
+
+  final double fraction;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width, size.height * fraction);
+
+  @override
+  bool shouldReclip(_TopRevealClipper oldClipper) => oldClipper.fraction != fraction;
 }

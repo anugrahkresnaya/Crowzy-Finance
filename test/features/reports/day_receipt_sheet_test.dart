@@ -62,6 +62,9 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(widget);
+    // Let the receipt finish printing so nothing is left animating.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
   }
 
   final groceries = tx('1', 184500, 'food', DateTime(2026, 10, 3, 9, 12), note: 'Groceries');
@@ -123,6 +126,8 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(sheet(expenses: many));
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(find.byType(SingleChildScrollView), findsOneWidget);

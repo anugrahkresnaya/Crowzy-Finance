@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
 import '../../../core/utils/app_page_route.dart';
@@ -69,6 +70,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   Future<void> _pickCategory(List<CategoryModel> categories) async {
     final selected = await showModalBottomSheet<String>(
       context: context,
+      sheetAnimationStyle: AppMotion.sheetAnimation(context),
       builder: (context) => ListView(
         shrinkWrap: true,
         children: categories

@@ -37,6 +37,8 @@ class AppMotion {
   static const Duration slipReveal = Duration(milliseconds: 700);
   static const Duration slipRevealDelay = Duration(milliseconds: 380);
   static const Duration slipLineStep = Duration(milliseconds: 80);
+  static const Duration slipFeed = signature;
+  static const Duration stampIn = Duration(milliseconds: 260);
 
   // Staggered lists: 40 ms per row, capped so deep rows never wait.
   static const Duration staggerStep = Duration(milliseconds: 40);
@@ -45,6 +47,18 @@ class AppMotion {
   /// Entrance delay for the row at [index], capped at [maxStaggered] rows.
   static Duration stagger(int index) =>
       staggerStep * math.min(math.max(index, 0), maxStaggered);
+
+  /// How bottom sheets open and close: up over [sheetIn], down over the quicker
+  /// [sheetOut] with an ease-in. Instant when motion is reduced.
+  static AnimationStyle sheetAnimation(BuildContext context) {
+    if (reduced(context)) return AnimationStyle.noAnimation;
+    return const AnimationStyle(
+      duration: sheetIn,
+      reverseDuration: sheetOut,
+      curve: curveOut,
+      reverseCurve: curveIn,
+    );
+  }
 
   /// Whether the user asked the system to reduce motion.
   static bool reduced(BuildContext context) =>

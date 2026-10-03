@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/utils/icon_mapper.dart';
@@ -13,6 +14,7 @@ Future<TransactionModel?> showCorrectionCandidatePickerSheet(
 ) {
   return showModalBottomSheet<TransactionModel>(
     context: context,
+    sheetAnimationStyle: AppMotion.sheetAnimation(context),
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
