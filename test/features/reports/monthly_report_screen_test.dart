@@ -209,4 +209,71 @@ void main() {
     expect(find.text('No transactions in March 2020'), findsOneWidget);
     expect(find.text('SPENDING BY DAY'), findsNothing);
   });
+
+  group('day receipt', () {
+    testWidgets('tapping the day card prints that day\'s receipt', (tester) async {
+      await pump(tester);
+
+      await tester.tap(find.text('1 MAY'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('DAILY RECEIPT'), findsOneWidget);
+      expect(find.text('FRI 1 MAY 2020'), findsOneWidget);
+      expect(find.text('Housing'), findsWidgets);
+      expect(find.text('TOTAL · 1 ITEM'), findsOneWidget);
+    });
+
+    testWidgets('it lists every expense of the day', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pump(tester);
+
+      await tester.tap(find.bySemanticsLabel('5 May, Rp 236.500'));
+      await settle(tester);
+      await tester.tap(find.text('5 MAY'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('TOTAL · 2 ITEMS'), findsOneWidget);
+      expect(find.text('\u2212236.500'), findsWidgets);
+      semantics.dispose();
+    });
+
+    testWidgets('Close dismisses it', (tester) async {
+      await pump(tester);
+
+      await tester.tap(find.text('1 MAY'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('DAILY RECEIPT'), findsNothing);
+    });
+
+    testWidgets('View in Activity opens Activity on that month', (tester) async {
+      await pump(tester);
+
+      await tester.tap(find.text('1 MAY'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View in Activity'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('DAILY RECEIPT'), findsNothing);
+      expect(find.text('Activity'), findsOneWidget);
+      expect(find.text('MAY 2020'), findsOneWidget);
+    });
+
+    testWidgets('a day with no spending has no receipt to open', (tester) async {
+      await pump(tester);
+
+      await tester.tap(find.text('Calendar'));
+      await settle(tester);
+      await tester.tap(find.text('2')); // 2 May: nothing spent
+      await settle(tester);
+
+      expect(find.text('No spending this day'), findsOneWidget);
+      await tester.tap(find.text('2 MAY'));
+      await tester.pumpAndSettle();
+      expect(find.text('DAILY RECEIPT'), findsNothing);
+    });
+  });
 }

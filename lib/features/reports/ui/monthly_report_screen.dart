@@ -4,14 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_text.dart';
+import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/month_switcher.dart';
+import '../../../data/models/transaction_type.dart';
+import '../../categories/providers/category_provider.dart';
+import '../../transactions/ui/transaction_list_screen.dart';
 import '../providers/report_provider.dart';
 import '../utils/report_stats.dart';
 import 'widgets/category_breakdown_list.dart';
 import 'widgets/day_detail_card.dart';
+import 'widgets/day_receipt_sheet.dart';
 import 'widgets/expense_comparison_card.dart';
 import 'widgets/ranked_days_list.dart';
 import 'widgets/report_calendar_grid.dart';
@@ -115,6 +120,25 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
     );
   }
 
+  /// Opens the receipt for [day] of [month]: that day's expenses in full.
+  void _openReceipt(DateTime month, int day, double average) {
+    final date = DateTime(month.year, month.month, day);
+    final expenses = ref
+        .read(monthTransactionsProvider)
+        .where((t) => t.type == TransactionType.expense && t.date.day == day)
+        .toList();
+    final categories = ref.read(categoryListProvider).value ?? const [];
+
+    showDayReceiptSheet(
+      context,
+      date: date,
+      expenses: expenses,
+      categoryById: {for (final c in categories) c.id: c},
+      average: average,
+      onViewInActivity: () => pushSlide(context, TransactionListScreen(initialMonth: date)),
+    );
+  }
+
   Widget _content(BuildContext context, {required DateTime month, required List<double> amounts}) {
     final peak = peakDay(amounts);
     final selected = _day ?? peak;
@@ -127,6 +151,7 @@ class _MonthlyReportScreenState extends ConsumerState<MonthlyReportScreen> {
             amount: amounts[selected - 1],
             average: average,
             isBiggestDay: selected == peak,
+            onTap: amounts[selected - 1] > 0 ? () => _openReceipt(month, selected, average) : null,
           );
 
     void select(int day) => setState(() => _day = day);

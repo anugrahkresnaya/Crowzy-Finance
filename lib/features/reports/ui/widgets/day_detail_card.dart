@@ -22,7 +22,7 @@ class DayDetailCard extends StatelessWidget {
   final double average;
   final bool isBiggestDay;
 
-  /// Opens the day's receipt, when provided.
+  /// Opens the day's receipt, when provided (shown as a chevron).
   final VoidCallback? onTap;
 
   /// "0,8× your daily average", with a decimal comma.
@@ -82,6 +82,10 @@ class DayDetailCard extends StatelessWidget {
                   color: amount > 0 ? AppColors.expense : AppColors.textMuted,
                 ),
               ),
+              if (onTap != null) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.textLabel),
+              ],
             ],
           ),
         ),
