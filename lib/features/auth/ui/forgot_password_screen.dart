@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_page_route.dart';
-import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_text_field.dart';
-import '../../../core/widgets/auth_background.dart';
-import '../../../core/widgets/entrance.dart';
 import '../providers/auth_provider.dart';
+import 'widgets/auth_layout.dart';
 import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -54,62 +53,40 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Forgot Password')),
-      body: SafeArea(
-        child: AuthBackground(
-          child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Enter your email and we\'ll send you a password reset link.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    prefixIcon: Icons.mail_outline,
-                    validator: Validators.email,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: isLoading ? null : _sendResetEmail,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Send Reset Link'),
-                  ),
-                  if (_emailSent) ...[
-                    const SizedBox(height: 24),
-                    Text(
-                      'Check your email for the reset link.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: () => pushSlide(context, const ResetPasswordScreen()),
-                    child: const Text('I Have My Reset Link'),
-                  ),
-                ],
-              ).entrance(context, duration: AppMotion.slow),
-            ),
-          ),
-          ),
+    final textTheme = Theme.of(context).textTheme;
+
+    return AuthLayout(
+      formKey: _formKey,
+      title: 'Forgot password',
+      children: [
+        Text(
+          'Enter your email and we\'ll send you a password reset link.',
+          style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted, height: 1.45),
         ),
-      ),
+        const SizedBox(height: 20),
+        AppTextField(
+          controller: _emailController,
+          label: 'Email',
+          keyboardType: TextInputType.emailAddress,
+          validator: Validators.email,
+          enabled: !isLoading,
+          textInputAction: TextInputAction.done,
+        ),
+        const SizedBox(height: 28),
+        AuthSubmitButton(label: 'Send reset link', isLoading: isLoading, onPressed: _sendResetEmail),
+        if (_emailSent) ...[
+          const SizedBox(height: 20),
+          Text(
+            'Check your email for the reset link.',
+            style: textTheme.bodyMedium?.copyWith(color: AppColors.income),
+          ),
+        ],
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () => pushSlide(context, const ResetPasswordScreen()),
+          child: const Text('I have my reset link'),
+        ),
+      ],
     );
   }
 }

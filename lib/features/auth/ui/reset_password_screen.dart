@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/theme/app_motion.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_text_field.dart';
-import '../../../core/widgets/auth_background.dart';
-import '../../../core/widgets/entrance.dart';
 import '../providers/auth_provider.dart';
+import 'widgets/auth_layout.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -61,71 +60,48 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Reset Password')),
-      body: SafeArea(
-        child: AuthBackground(
-          child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Paste the full password reset link from your email below.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _linkController,
-                    label: 'Reset Link',
-                    minLines: 2,
-                    maxLines: 4,
-                    validator: (value) => (value == null || value.trim().isEmpty)
-                        ? 'Paste the reset link'
-                        : null,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _passwordController,
-                    label: 'New Password',
-                    isPassword: true,
-                    prefixIcon: Icons.lock_outline,
-                    validator: Validators.password,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _confirmPasswordController,
-                    label: 'Confirm New Password',
-                    isPassword: true,
-                    prefixIcon: Icons.lock_outline,
-                    validator: (value) =>
-                        Validators.confirmPassword(value, _passwordController.text),
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: isLoading ? null : _submit,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Update Password'),
-                  ),
-                ],
-              ).entrance(context, duration: AppMotion.slow),
-            ),
-          ),
-          ),
+    return AuthLayout(
+      formKey: _formKey,
+      title: 'Reset password',
+      children: [
+        Text(
+          'Paste the full password reset link from your email below.',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: AppColors.textMuted, height: 1.45),
         ),
-      ),
+        const SizedBox(height: 20),
+        AppTextField(
+          controller: _linkController,
+          label: 'Reset link',
+          minLines: 2,
+          maxLines: 4,
+          validator: (value) =>
+              (value == null || value.trim().isEmpty) ? 'Paste the reset link' : null,
+          enabled: !isLoading,
+        ),
+        const SizedBox(height: 16),
+        AppTextField(
+          controller: _passwordController,
+          label: 'New password',
+          isPassword: true,
+          validator: Validators.password,
+          enabled: !isLoading,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 16),
+        AppTextField(
+          controller: _confirmPasswordController,
+          label: 'Confirm new password',
+          isPassword: true,
+          validator: (value) => Validators.confirmPassword(value, _passwordController.text),
+          enabled: !isLoading,
+          textInputAction: TextInputAction.done,
+        ),
+        const SizedBox(height: 28),
+        AuthSubmitButton(label: 'Update password', isLoading: isLoading, onPressed: _submit),
+      ],
     );
   }
 }

@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_page_route.dart';
-import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_text_field.dart';
-import '../../../core/widgets/auth_background.dart';
-import '../../../core/widgets/entrance.dart';
 import '../providers/auth_provider.dart';
+import 'widgets/auth_layout.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
 
@@ -54,74 +53,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
-    return Scaffold(
-      body: SafeArea(
-        child: AuthBackground(
-          child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Crowzy Finance',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 32),
-                  AppTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    prefixIcon: Icons.mail_outline,
-                    validator: Validators.email,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    isPassword: true,
-                    prefixIcon: Icons.lock_outline,
-                    validator: Validators.password,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: isLoading ? null : _submit,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Log In'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: isLoading
-                        ? null
-                        : () => pushSlide(context, const SignupScreen()),
-                    child: const Text("Don't have an account? Sign up"),
-                  ),
-                  TextButton(
-                    onPressed: isLoading
-                        ? null
-                        : () => pushSlide(context, const ForgotPasswordScreen()),
-                    child: const Text('Forgot password?'),
-                  ),
-                ],
-              ).entrance(context, duration: AppMotion.slow),
-            ),
-          ),
+    return AuthLayout(
+      formKey: _formKey,
+      brand: true,
+      children: [
+        AppTextField(
+          controller: _emailController,
+          label: 'Email',
+          keyboardType: TextInputType.emailAddress,
+          validator: Validators.email,
+          enabled: !isLoading,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 16),
+        AppTextField(
+          controller: _passwordController,
+          label: 'Password',
+          isPassword: true,
+          validator: Validators.password,
+          enabled: !isLoading,
+          textInputAction: TextInputAction.done,
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: isLoading ? null : () => pushSlide(context, const ForgotPasswordScreen()),
+            child: const Text('Forgot password?'),
           ),
         ),
-      ),
+        const SizedBox(height: 4),
+        AuthSubmitButton(label: 'Sign in', isLoading: isLoading, onPressed: _submit),
+        const SizedBox(height: 20),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'New here?',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: AppColors.textMuted),
+            ),
+            TextButton(
+              onPressed: isLoading ? null : () => pushSlide(context, const SignupScreen()),
+              child: const Text('Create an account'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

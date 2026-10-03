@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_text_field.dart';
-import '../../../core/widgets/auth_background.dart';
-import '../../../core/widgets/entrance.dart';
 import '../providers/auth_provider.dart';
+import 'widgets/auth_layout.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -59,63 +57,39 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
     final isLoading = ref.watch(authControllerProvider).isLoading;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up')),
-      body: SafeArea(
-        child: AuthBackground(
-          child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    prefixIcon: Icons.mail_outline,
-                    validator: Validators.email,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    isPassword: true,
-                    prefixIcon: Icons.lock_outline,
-                    validator: Validators.password,
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _confirmPasswordController,
-                    label: 'Confirm Password',
-                    isPassword: true,
-                    prefixIcon: Icons.lock_outline,
-                    validator: (value) => Validators.confirmPassword(value, _passwordController.text),
-                    enabled: !isLoading,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: isLoading ? null : _submit,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Create Account'),
-                  ),
-                ],
-              ).entrance(context, duration: AppMotion.slow),
-            ),
-          ),
-          ),
+    return AuthLayout(
+      formKey: _formKey,
+      title: 'Sign up',
+      children: [
+        AppTextField(
+          controller: _emailController,
+          label: 'Email',
+          keyboardType: TextInputType.emailAddress,
+          validator: Validators.email,
+          enabled: !isLoading,
+          textInputAction: TextInputAction.next,
         ),
-      ),
+        const SizedBox(height: 16),
+        AppTextField(
+          controller: _passwordController,
+          label: 'Password',
+          isPassword: true,
+          validator: Validators.password,
+          enabled: !isLoading,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 16),
+        AppTextField(
+          controller: _confirmPasswordController,
+          label: 'Confirm password',
+          isPassword: true,
+          validator: (value) => Validators.confirmPassword(value, _passwordController.text),
+          enabled: !isLoading,
+          textInputAction: TextInputAction.done,
+        ),
+        const SizedBox(height: 28),
+        AuthSubmitButton(label: 'Create account', isLoading: isLoading, onPressed: _submit),
+      ],
     );
   }
 }
