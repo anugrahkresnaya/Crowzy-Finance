@@ -13,6 +13,7 @@ class AlertsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final alertsAsync = ref.watch(alertListProvider);
+    final hasUnread = ref.watch(unreadAlertsProvider).isNotEmpty;
 
     ref.listen<AsyncValue<List<AlertModel>>>(alertListProvider, (previous, next) {
       next.whenOrNull(
@@ -23,7 +24,16 @@ class AlertsListScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Alerts')),
+      appBar: AppBar(
+        title: const Text('Alerts'),
+        actions: [
+          TextButton(
+            onPressed: hasUnread ? () => ref.read(alertListProvider.notifier).markAllRead() : null,
+            child: const Text('Mark all read'),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: alertsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Failed to load alerts: $error')),
@@ -36,7 +46,7 @@ class AlertsListScreen extends ConsumerWidget {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             itemCount: alerts.length,
             itemBuilder: (context, index) {
               final alert = alerts[index];

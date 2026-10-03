@@ -43,6 +43,35 @@ void main() {
     expect(all.map((a) => a.id), ['a2', 'a1']);
   });
 
+  test('applyReadLocally stamps the given alerts and leaves the others unread', () async {
+    await box.put('a1', buildAlert(id: 'a1').toJson());
+    await box.put('a2', buildAlert(id: 'a2').toJson());
+    final at = DateTime(2026, 7, 5, 9);
+
+    await repository.applyReadLocally(['a1'], at);
+
+    final byId = {for (final a in repository.getAll()) a.id: a};
+    expect(byId['a1']!.readAt, at);
+    expect(byId['a2']!.isUnread, isTrue);
+  });
+
+  test('applyReadLocally skips ids that are not cached', () async {
+    await box.put('a1', buildAlert(id: 'a1').toJson());
+
+    await repository.applyReadLocally(['missing', 'a1'], DateTime(2026, 7, 5));
+
+    expect(repository.getAll().single.isUnread, isFalse);
+  });
+
+  test('markAllRead does not touch the network when everything is already read', () async {
+    await box.put('a1', buildAlert(id: 'a1', readAt: DateTime(2026, 7, 2)).toJson());
+
+    // The placeholder client cannot reach a server, so this would throw if it tried.
+    await repository.markAllRead();
+
+    expect(repository.getAll().single.readAt, DateTime(2026, 7, 2));
+  });
+
   test('AlertModel.isUnread is true when read_at is null', () {
     final unread = buildAlert();
     final read = buildAlert(readAt: DateTime(2026, 7, 2));
