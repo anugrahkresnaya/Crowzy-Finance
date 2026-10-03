@@ -6,6 +6,27 @@ import '../../data/models/category_model.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/models/wishlist_model.dart';
 
+class SyncStepFailure {
+  const SyncStepFailure(this.step, this.error, this.stackTrace);
+
+  final String step;
+  final Object error;
+  final StackTrace stackTrace;
+
+  @override
+  String toString() => '$step: $error';
+}
+
+/// Thrown by [SyncService.sync] after all steps ran, if any of them failed.
+class SyncException implements Exception {
+  const SyncException(this.failures);
+
+  final List<SyncStepFailure> failures;
+
+  @override
+  String toString() => 'Sync failed (${failures.join('; ')})';
+}
+
 class SyncService {
   SyncService(
     this._client,
@@ -25,14 +46,31 @@ class SyncService {
 
   static const _pageSize = 500;
 
+  /// Runs every push/pull step even if an earlier one fails, so one broken
+  /// table (or a transient error mid-way) doesn't starve the others. Pulling
+  /// after a failed push is safe: merges never overwrite a local row that is
+  /// still unsynced. Throws a [SyncException] listing every failed step once
+  /// all steps have been attempted.
   Future<void> sync(String userId) async {
-    await _pushCategories();
-    await _pushTransactions();
-    await _pushWishlist();
-    await _pullCategories(userId);
-    await _pullTransactions(userId);
-    await _pullWishlist(userId);
-    await _pullAlerts(userId);
+    final failures = <SyncStepFailure>[];
+
+    Future<void> run(String step, Future<void> Function() action) async {
+      try {
+        await action();
+      } catch (error, stackTrace) {
+        failures.add(SyncStepFailure(step, error, stackTrace));
+      }
+    }
+
+    await run('push categories', _pushCategories);
+    await run('push transactions', _pushTransactions);
+    await run('push wishlist', _pushWishlist);
+    await run('pull categories', () => _pullCategories(userId));
+    await run('pull transactions', () => _pullTransactions(userId));
+    await run('pull wishlist', () => _pullWishlist(userId));
+    await run('pull alerts', () => _pullAlerts(userId));
+
+    if (failures.isNotEmpty) throw SyncException(failures);
   }
 
   Future<void> _pushCategories() async {

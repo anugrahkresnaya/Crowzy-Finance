@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/alerts/providers/alert_provider.dart';
@@ -28,26 +29,42 @@ class SyncController extends _$SyncController {
   @override
   Future<void> build() async {}
 
+  /// Never throws: local data stays usable offline-first and the next
+  /// start/resume retries. Failures are logged and surfaced as this
+  /// controller's [AsyncError] state, and whatever did sync is still applied.
   Future<void> syncNow() async {
     final userId = ref.read(currentUserProvider)?.id;
     if (userId == null) return;
 
     final beforeUnread = ref.read(unreadAlertsProvider).length;
 
+    Object? failure;
+    StackTrace? failureTrace;
     try {
       await ref.read(syncServiceProvider).sync(userId);
-      ref.invalidate(categoryListProvider);
-      ref.invalidate(transactionListProvider);
-      ref.invalidate(wishlistListProvider);
-      ref.invalidate(alertListProvider);
-
-      final newUnread = ref.read(unreadAlertsProvider).length - beforeUnread;
-      if (newUnread > 0) {
-        await ref.read(notificationServiceProvider).showNewAlerts(newUnread);
-      }
-    } catch (_) {
-      // Non-fatal: local data stays usable offline-first; retried on the next
-      // app start / resume / write.
+    } catch (error, stackTrace) {
+      failure = error;
+      failureTrace = stackTrace;
+      debugPrint('Sync failed: $error');
     }
+
+    // Partial success is still success for the steps that completed.
+    ref.invalidate(categoryListProvider);
+    ref.invalidate(transactionListProvider);
+    ref.invalidate(wishlistListProvider);
+    ref.invalidate(alertListProvider);
+
+    final newUnread = ref.read(unreadAlertsProvider).length - beforeUnread;
+    if (newUnread > 0) {
+      try {
+        await ref.read(notificationServiceProvider).showNewAlerts(newUnread);
+      } catch (error) {
+        debugPrint('Showing alert notification failed: $error');
+      }
+    }
+
+    state = failure == null
+        ? const AsyncData(null)
+        : AsyncError(failure, failureTrace!);
   }
 }

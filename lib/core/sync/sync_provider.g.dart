@@ -74,7 +74,7 @@ final class SyncControllerProvider
   SyncController create() => SyncController();
 }
 
-String _$syncControllerHash() => r'068ae9ac94212ad163316b07c9c3e80a278784ce';
+String _$syncControllerHash() => r'90cc7a9d56cad41a24f4eae2383205b851a9dbf4';
 
 abstract class _$SyncController extends $AsyncNotifier<void> {
   FutureOr<void> build();

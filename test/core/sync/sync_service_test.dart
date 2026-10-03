@@ -162,15 +162,43 @@ void main() {
       expect(requests.where((r) => r.method == 'POST'), isEmpty);
     });
 
-    test('a failed push throws, leaves rows dirty, and skips the pull', () async {
+    test('a failed push leaves rows dirty and is reported, but the other steps still run', () async {
       await transactions.put('dirty', transaction('dirty', isSynced: false).toJson());
+      remote['wishlist'] = [
+        WishlistModel(
+          id: 'w1',
+          userId: userId,
+          name: 'Laptop',
+          targetAmount: 1000,
+          createdAt: DateTime.utc(2026, 7, 1),
+          updatedAt: DateTime.utc(2026, 7, 4),
+        ).toSupabaseRow(),
+      ];
       failPostWithStatus = 500;
 
-      await expectLater(service.sync(userId), throwsA(isA<PostgrestException>()));
+      final error = await service.sync(userId).then<Object?>((_) => null, onError: (e) => e);
+
+      expect(error, isA<SyncException>());
+      expect((error! as SyncException).failures.map((f) => f.step), ['push transactions']);
 
       final stored = TransactionModel.fromJson(Map<String, dynamic>.from(transactions.get('dirty')!));
       expect(stored.isSynced, isFalse);
-      expect(requests.where((r) => r.method == 'GET'), isEmpty);
+      // Pulls still ran, so unrelated remote data arrived.
+      expect(wishlist.containsKey('w1'), isTrue);
+    });
+
+    test('a local row whose push failed is not overwritten by the following pull', () async {
+      await transactions.put('t1', transaction('t1', amount: 50, isSynced: false).toJson());
+      remote['transactions'] = [
+        transaction('t1', amount: 10, updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
+      ];
+      failPostWithStatus = 500;
+
+      await expectLater(service.sync(userId), throwsA(isA<SyncException>()));
+
+      final stored = TransactionModel.fromJson(Map<String, dynamic>.from(transactions.get('t1')!));
+      expect(stored.amount, 50);
+      expect(stored.isSynced, isFalse);
     });
   });
 
