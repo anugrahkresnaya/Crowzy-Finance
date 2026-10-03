@@ -6,7 +6,7 @@ import '../../../../core/widgets/press_scale.dart';
 import '../../../../data/models/alert_model.dart';
 import '../../../../data/models/alert_type.dart';
 
-({IconData icon, Color color, String title}) _alertVisuals(AlertType type) {
+({IconData icon, Color color, String title}) alertVisuals(AlertType type) {
   return switch (type) {
     AlertType.categorySpike => (
         icon: Icons.trending_up_rounded,
@@ -28,6 +28,21 @@ import '../../../../data/models/alert_type.dart';
         color: AppColors.expense,
         title: 'Income drop',
       ),
+    AlertType.budgetLimit => (
+        icon: Icons.speed_rounded,
+        color: AppColors.expense,
+        title: 'Nearing a limit',
+      ),
+    AlertType.incomeReceived => (
+        icon: Icons.arrow_upward_rounded,
+        color: AppColors.income,
+        title: 'Income received',
+      ),
+    AlertType.goalOnTrack => (
+        icon: Icons.flag_outlined,
+        color: AppColors.income,
+        title: 'Goal on track',
+      ),
   };
 }
 
@@ -39,17 +54,37 @@ class AlertTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visuals = _alertVisuals(alert.type);
+    final visuals = alertVisuals(alert.type);
     final isUnread = alert.isUnread;
+    final goodNews = alert.type.isGoodNews;
     final textTheme = Theme.of(context).textTheme;
+
+    // Unread warnings are tinted burgundy; unread good news takes the calmer
+    // green of the hero cards. Once read, both settle to the plain surface.
+    final Color background = !isUnread
+        ? AppColors.surface
+        : goodNews
+            ? AppColors.hero
+            : AppColors.noticeBackground;
+    final Color border = !isUnread
+        ? AppColors.hairlineSoft
+        : goodNews
+            ? AppColors.heroBorder
+            : AppColors.noticeBorder;
+    final Color iconBackground = !isUnread
+        ? AppColors.surface
+        : goodNews
+            ? AppColors.surfaceHigh
+            : AppColors.noticeIcon;
+    final Color iconBorder = !isUnread ? AppColors.hairline : border;
 
     return PressScale(
       enabled: onTap != null,
       child: Material(
-        color: isUnread ? AppColors.noticeBackground : AppColors.surface,
+        color: background,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: isUnread ? AppColors.noticeBorder : AppColors.hairlineSoft),
+          side: BorderSide(color: border),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -64,10 +99,8 @@ class AlertTile extends StatelessWidget {
                   height: 42,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isUnread ? AppColors.noticeIcon : AppColors.surface,
-                    border: Border.all(
-                      color: isUnread ? AppColors.noticeBorder : AppColors.hairline,
-                    ),
+                    color: iconBackground,
+                    border: Border.all(color: iconBorder),
                   ),
                   child: Icon(visuals.icon, color: visuals.color, size: 19),
                 ),
@@ -91,8 +124,8 @@ class AlertTile extends StatelessWidget {
                             Container(
                               width: 7,
                               height: 7,
-                              decoration: const BoxDecoration(
-                                color: AppColors.expense,
+                              decoration: BoxDecoration(
+                                color: goodNews ? AppColors.income : AppColors.expense,
                                 shape: BoxShape.circle,
                               ),
                             ),
