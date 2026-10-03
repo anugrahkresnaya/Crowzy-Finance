@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/entrance.dart';
 import '../../../data/models/alert_model.dart';
 import '../providers/alert_provider.dart';
 import 'widgets/alert_tile.dart';
@@ -41,16 +41,14 @@ class AlertsListScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final alert = alerts[index];
               return Padding(
+                key: ValueKey(alert.id),
                 padding: const EdgeInsets.only(bottom: 10),
                 child: AlertTile(
                   alert: alert,
                   onTap: alert.isUnread
                       ? () => ref.read(alertListProvider.notifier).markRead(alert.id)
                       : null,
-                ).animate().fadeIn(delay: (40 * index).ms, duration: 250.ms).slideX(
-                      begin: 0.03,
-                      end: 0,
-                    ),
+                ).entrance(context, index: index, axis: Axis.horizontal),
               );
             },
           );

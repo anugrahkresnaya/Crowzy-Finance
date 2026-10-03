@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/entrance.dart';
 import '../../../core/widgets/gradient_balance_card.dart';
 import '../../ai_analyzer/ui/ai_analyzer_screen.dart';
 import '../../ai_analyzer/ui/widgets/passive_insight_card.dart';
@@ -69,15 +70,17 @@ class HomeScreen extends ConsumerWidget {
             GradientBalanceCard(
               allTimeBalance: allTimeBalance,
               thisMonthBalance: thisMonthBalance,
-            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
-            const PassiveInsightCard()
-                .animate()
-                .fadeIn(delay: 150.ms, duration: 400.ms)
-                .slideY(begin: 0.05, end: 0),
-            const AlertsCard()
-                .animate()
-                .fadeIn(delay: 200.ms, duration: 400.ms)
-                .slideY(begin: 0.05, end: 0),
+            ).entrance(context, duration: AppMotion.slow),
+            const PassiveInsightCard().entrance(
+              context,
+              delay: const Duration(milliseconds: 150),
+              duration: AppMotion.slow,
+            ),
+            const AlertsCard().entrance(
+              context,
+              delay: const Duration(milliseconds: 200),
+              duration: AppMotion.slow,
+            ),
             const SizedBox(height: 28),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -99,14 +102,12 @@ class HomeScreen extends ConsumerWidget {
                 (entry) {
                   final (index, transaction) = entry;
                   return Padding(
+                    key: ValueKey(transaction.id),
                     padding: const EdgeInsets.only(bottom: 10),
                     child: TransactionTile(
                       transaction: transaction,
                       category: categoryById[transaction.categoryId],
-                    )
-                        .animate()
-                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
-                        .slideX(begin: 0.04, end: 0),
+                    ).entrance(context, index: index, axis: Axis.horizontal),
                   );
                 },
               ),
@@ -131,11 +132,10 @@ class HomeScreen extends ConsumerWidget {
                 (entry) {
                   final (index, goal) = entry;
                   return Padding(
+                    key: ValueKey(goal.id),
                     padding: const EdgeInsets.only(bottom: 10),
                     child: WishlistTile(goal: goal)
-                        .animate()
-                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
-                        .slideX(begin: 0.04, end: 0),
+                        .entrance(context, index: index, axis: Axis.horizontal),
                   );
                 },
               ),
@@ -160,14 +160,12 @@ class HomeScreen extends ConsumerWidget {
                 (entry) {
                   final (index, alert) = entry;
                   return Padding(
+                    key: ValueKey(alert.id),
                     padding: const EdgeInsets.only(bottom: 10),
                     child: AlertTile(
                       alert: alert,
                       onTap: () => ref.read(alertListProvider.notifier).markRead(alert.id),
-                    )
-                        .animate()
-                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
-                        .slideX(begin: 0.04, end: 0),
+                    ).entrance(context, index: index, axis: Axis.horizontal),
                   );
                 },
               ),

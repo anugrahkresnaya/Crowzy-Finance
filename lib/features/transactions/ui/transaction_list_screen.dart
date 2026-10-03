@@ -1,12 +1,12 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/confirm_dialog.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/entrance.dart';
 import '../../../data/models/category_model.dart';
 import '../../categories/providers/category_provider.dart';
 import '../providers/transaction_provider.dart';
@@ -171,6 +171,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                   itemBuilder: (context, index) {
                     final transaction = filtered[index];
                     return Padding(
+                      key: ValueKey(transaction.id),
                       padding: const EdgeInsets.only(bottom: 10),
                       child: TransactionTile(
                         transaction: transaction,
@@ -180,10 +181,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                           AddEditTransactionScreen(transaction: transaction),
                         ),
                         onDelete: () => _confirmAndDelete(transaction.id),
-                      )
-                          .animate()
-                          .fadeIn(delay: (40 * index).ms, duration: 250.ms)
-                          .slideX(begin: 0.03, end: 0),
+                      ).entrance(context, index: index, axis: Axis.horizontal),
                     );
                   },
                 );

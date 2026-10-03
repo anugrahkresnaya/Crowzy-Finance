@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/theme/app_motion.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/auth_background.dart';
+import '../../../core/widgets/entrance.dart';
 import '../providers/auth_provider.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -109,7 +110,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         : const Text('Create Account'),
                   ),
                 ],
-              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.04, end: 0),
+              ).entrance(context, duration: AppMotion.slow),
             ),
           ),
           ),

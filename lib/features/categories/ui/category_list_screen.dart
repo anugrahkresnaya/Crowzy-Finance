@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -7,6 +6,7 @@ import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/confirm_dialog.dart';
 import '../../../core/utils/icon_mapper.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/entrance.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/transaction_type.dart';
 import '../providers/category_provider.dart';
@@ -103,6 +103,7 @@ class _CategoryTab extends ConsumerWidget {
             : AppColors.expense;
 
         return Padding(
+          key: ValueKey(category.id),
           padding: const EdgeInsets.only(bottom: 10),
           child: Card(
             child: Padding(
@@ -153,7 +154,7 @@ class _CategoryTab extends ConsumerWidget {
               ),
             ),
           ),
-        ).animate().fadeIn(delay: (40 * index).ms, duration: 250.ms).slideX(begin: 0.03, end: 0);
+        ).entrance(context, index: index, axis: Axis.horizontal);
       },
     );
   }

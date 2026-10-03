@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/confirm_dialog.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/entrance.dart';
 import '../../../data/models/wishlist_model.dart';
 import '../providers/wishlist_provider.dart';
 import 'add_edit_wishlist_screen.dart';
@@ -49,6 +49,7 @@ class WishlistListScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final goal = goals[index];
               return Padding(
+                key: ValueKey(goal.id),
                 padding: const EdgeInsets.only(bottom: 10),
                 child: WishlistTile(
                   goal: goal,
@@ -72,10 +73,7 @@ class WishlistListScreen extends ConsumerWidget {
                       ref.read(wishlistListProvider.notifier).deleteGoal(goal.id);
                     }
                   },
-                ).animate().fadeIn(delay: (40 * index).ms, duration: 250.ms).slideX(
-                      begin: 0.03,
-                      end: 0,
-                    ),
+                ).entrance(context, index: index, axis: Axis.horizontal),
               );
             },
           );
