@@ -10,6 +10,7 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../data/models/category_model.dart';
 import '../../categories/providers/category_provider.dart';
 import '../providers/transaction_provider.dart';
+import '../utils/transaction_sort.dart';
 import 'add_edit_transaction_screen.dart';
 import 'widgets/transaction_tile.dart';
 
@@ -23,6 +24,7 @@ class TransactionListScreen extends ConsumerStatefulWidget {
 class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   DateTimeRange? _dateRange;
   String? _categoryId;
+  TransactionSort _sort = TransactionSort.newest;
 
   Future<void> _pickDateRange() async {
     final picked = await showDateRangePicker(
@@ -72,6 +74,20 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       appBar: AppBar(
         title: const Text('Transactions'),
         actions: [
+          PopupMenuButton<TransactionSort>(
+            icon: const Icon(Icons.sort),
+            tooltip: 'Sort',
+            initialValue: _sort,
+            onSelected: (sort) => setState(() => _sort = sort),
+            itemBuilder: (context) => [
+              for (final sort in TransactionSort.values)
+                CheckedPopupMenuItem(
+                  value: sort,
+                  checked: sort == _sort,
+                  child: Text(sort.label),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.category_outlined),
             onPressed: () => _pickCategory(categoriesAsync.value ?? const []),
@@ -88,7 +104,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       ),
       body: Column(
         children: [
-          if (_dateRange != null || _categoryId != null)
+          if (_dateRange != null || _categoryId != null || _sort != TransactionSort.newest)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Wrap(
@@ -110,6 +126,12 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                             'Category',
                       ),
                       onDeleted: () => setState(() => _categoryId = null),
+                    ),
+                  if (_sort != TransactionSort.newest)
+                    Chip(
+                      avatar: const Icon(Icons.sort, size: 16),
+                      label: Text(_sort.label),
+                      onDeleted: () => setState(() => _sort = TransactionSort.newest),
                     ),
                 ],
               ),
@@ -133,6 +155,8 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 if (_categoryId != null) {
                   filtered = filtered.where((t) => t.categoryId == _categoryId).toList();
                 }
+
+                filtered = sortTransactions(filtered, _sort);
 
                 if (filtered.isEmpty) {
                   return const EmptyState(
