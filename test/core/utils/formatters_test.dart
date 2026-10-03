@@ -48,6 +48,20 @@ void main() {
     });
   });
 
+  group('DateFormatter.relativeDayLong', () {
+    final now = DateTime(2026, 10, 3, 9, 30);
+
+    test('Today, Yesterday, then a long date', () {
+      expect(DateFormatter.relativeDayLong(DateTime(2026, 10, 3), now: now), 'Today');
+      expect(DateFormatter.relativeDayLong(DateTime(2026, 10, 2), now: now), 'Yesterday');
+      expect(DateFormatter.relativeDayLong(DateTime(2026, 10, 1), now: now), '1 October');
+    });
+
+    test('adds the year for other years', () {
+      expect(DateFormatter.relativeDayLong(DateTime(2025, 12, 31), now: now), '31 December 2025');
+    });
+  });
+
   group('DateFormatter.ago', () {
     final now = DateTime(2026, 10, 3, 12);
 
