@@ -1,31 +1,61 @@
 import 'package:flutter/material.dart';
 
+/// Dark-elegance palette: bottle-green near-black, ivory text, brass accents,
+/// with burgundy reserved for the add action and notices.
 class AppColors {
   AppColors._();
 
-  // Brand seed — violet, modern fintech feel
-  static const Color seed = Color(0xFF8B5CF6);
-  static const Color seedLight = Color(0xFFA78BFA);
+  // Surfaces
+  static const Color background = Color(0xFF0B100E);
+  static const Color surface = Color(0xFF121A16);
+  static const Color surfaceHigh = Color(0xFF172620);
+  static const Color hero = Color(0xFF13241B);
+  static const Color heroBorder = Color(0xFF2F4A3B);
 
-  // Dark mode surfaces — black with a purple tint
-  static const Color darkBackground = Color(0xFF0C0812);
-  static const Color darkSurface = Color(0xFF17111F);
-  static const Color darkSurfaceHigh = Color(0xFF1F1729);
+  // Lines
+  static const Color hairline = Color(0xFF2A3A31);
+  static const Color hairlineSoft = Color(0xFF243228);
+  static const Color divider = Color(0xFF1F2B24);
+  static const Color track = Color(0xFF25332B);
 
-  // Light mode surfaces — soft violet tint
-  static const Color lightBackground = Color(0xFFF7F5FB);
-  static const Color lightSurface = Color(0xFFFFFFFF);
+  // Text
+  static const Color ivory = Color(0xFFEFE8D8);
+  static const Color textLabel = Color(0xFFB4BBA9);
+  static const Color textMuted = Color(0xFFA3AA9C);
+  static const Color textFaint = Color(0xFF8A9187);
 
-  // Balance card gradient — black → deep purple → violet
-  static const Color gradientStart = Color(0xFF0C0812);
-  static const Color gradientMid = Color(0xFF2E1065);
-  static const Color gradientEnd = Color(0xFF7C3AED);
+  // Brass accent
+  static const Color brass = Color(0xFFD8C08A);
+  static const Color brassOutline = Color(0xFF8C7A4F);
+  static const Color brassDim = Color(0xFF5F5640);
 
-  // Balance card glass blobs — third accent alongside seedLight/gradientMid
-  static const Color blobAccent = Color(0xFFD946EF);
+  // Burgundy (add action, notices)
+  static const Color burgundy = Color(0xFF4A1C26);
+  static const Color burgundyBorder = Color(0xFF6A2D3A);
+  static const Color noticeBackground = Color(0xFF1A1113);
+  static const Color noticeBorder = Color(0xFF4A2A30);
 
   // Semantic
-  static const Color error = Color(0xFFEF4444);
-  static const Color income = Color(0xFF34D399);
-  static const Color expense = Color(0xFFFB7185);
+  static const Color income = Color(0xFF9DBF9A);
+  static const Color expense = Color(0xFFE0A08B);
+  static const Color error = Color(0xFFE58B75);
+
+  // Receipt slip
+  static const Color paper = Color(0xFFEFE8D8);
+  static const Color ink = Color(0xFF1B1F1C);
+  static const Color inkMuted = Color(0xFF5B5F55);
+  static const Color inkRule = Color(0xFF8C8672);
+  static const Color oxblood = Color(0xFF7A2E1F);
+
+  // Legacy names kept so existing widgets compile until they are restyled in
+  // later phases; each maps to the closest new token.
+  static const Color seed = brass;
+  static const Color seedLight = brass;
+  static const Color darkBackground = background;
+  static const Color darkSurface = surface;
+  static const Color darkSurfaceHigh = hero;
+  static const Color gradientStart = background;
+  static const Color gradientMid = hero;
+  static const Color gradientEnd = heroBorder;
+  static const Color blobAccent = brassOutline;
 }

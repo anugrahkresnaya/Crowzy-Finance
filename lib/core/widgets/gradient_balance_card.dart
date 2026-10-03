@@ -19,7 +19,7 @@ class GradientBalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? AppColors.darkSurfaceHigh : AppColors.lightSurface;
+    final baseColor = AppColors.darkSurfaceHigh;
 
     return Container(
       width: double.infinity,
