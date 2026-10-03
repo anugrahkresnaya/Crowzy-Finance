@@ -13,6 +13,45 @@ class DateFormatter {
   static String monthYear(DateTime date) => _monthYear.format(date);
   static String weekday(DateTime date) => _weekday.format(date);
 
+  static final _dayLong = DateFormat('d MMMM');
+
+  /// "1 October"
+  static String dayLong(DateTime date) => _dayLong.format(date);
+
+  /// "Today", "Yesterday", or a short date ("1 Oct", with the year when it is
+  /// not the current one).
+  static String relativeDay(DateTime date, {DateTime? now}) {
+    final today = now ?? DateTime.now();
+    final days = _calendarDays(today) - _calendarDays(date);
+    if (days == 0) return 'Today';
+    if (days == 1) return 'Yesterday';
+    return date.year == today.year ? dayShort(date) : day(date);
+  }
+
+  /// "Just now", "5 minutes ago", "2 hours ago", "Yesterday", then "1 October".
+  static String ago(DateTime date, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final elapsed = current.difference(date);
+    if (elapsed.inMinutes < 1) return 'Just now';
+    if (elapsed.inMinutes < 60) {
+      final minutes = elapsed.inMinutes;
+      return '$minutes ${minutes == 1 ? 'minute' : 'minutes'} ago';
+    }
+    final days = _calendarDays(current) - _calendarDays(date);
+    if (days == 0) {
+      final hours = elapsed.inHours;
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} ago';
+    }
+    if (days == 1) return 'Yesterday';
+    return date.year == current.year ? dayLong(date) : day(date);
+  }
+
+  // Whole days since the epoch for the calendar date, computed in UTC so a
+  // daylight-saving change cannot make two adjacent days look zero days apart.
+  static int _calendarDays(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
+
   static bool isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 

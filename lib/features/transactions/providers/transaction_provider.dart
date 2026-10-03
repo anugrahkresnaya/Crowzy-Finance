@@ -8,6 +8,7 @@ import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../repository/transaction_repository.dart';
+import '../utils/month_summary.dart';
 
 part 'transaction_provider.g.dart';
 
@@ -112,6 +113,12 @@ double thisMonthBalance(Ref ref) {
   final monthTransactions =
       transactions.where((t) => DateFormatter.isSameMonth(t.date, now));
   return _netOf(monthTransactions);
+}
+
+@riverpod
+MonthSummary thisMonthSummary(Ref ref) {
+  final transactions = ref.watch(transactionListProvider).value ?? const [];
+  return summarizeMonth(transactions, DateTime.now());
 }
 
 double _netOf(Iterable<TransactionModel> transactions) {

@@ -402,3 +402,44 @@ final class ThisMonthBalanceProvider
 }
 
 String _$thisMonthBalanceHash() => r'e2ff422b2d3b20ffc736d6254082f3bf53de1ff3';
+
+@ProviderFor(thisMonthSummary)
+final thisMonthSummaryProvider = ThisMonthSummaryProvider._();
+
+final class ThisMonthSummaryProvider
+    extends $FunctionalProvider<MonthSummary, MonthSummary, MonthSummary>
+    with $Provider<MonthSummary> {
+  ThisMonthSummaryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'thisMonthSummaryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$thisMonthSummaryHash();
+
+  @$internal
+  @override
+  $ProviderElement<MonthSummary> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  MonthSummary create(Ref ref) {
+    return thisMonthSummary(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(MonthSummary value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<MonthSummary>(value),
+    );
+  }
+}
+
+String _$thisMonthSummaryHash() => r'a54a3f1030a29c605b9f13be9a2a3ac698dc6529';
