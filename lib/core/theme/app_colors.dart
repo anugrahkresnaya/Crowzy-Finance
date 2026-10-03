@@ -28,6 +28,7 @@ class AppColors {
   // Brass accent
   static const Color brass = Color(0xFFD8C08A);
   static const Color brassOutline = Color(0xFF8C7A4F);
+  static const Color brassMid = Color(0xFFA58F5C);
   static const Color brassDim = Color(0xFF5F5640);
 
   // Burgundy (add action, notices)
