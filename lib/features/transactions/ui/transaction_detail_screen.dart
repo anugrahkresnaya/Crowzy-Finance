@@ -104,7 +104,7 @@ class _Receipt extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _PrinterSlot(),
+        const ReceiptPrinterSlot(),
         ReceiptPrint(child: _slip(context, isIncome, categoryName, note, amountColor)),
       ],
     );
@@ -162,23 +162,6 @@ class _Receipt extends StatelessWidget {
         const SizedBox(height: 8),
         const ReceiptFooter('THANK YOU FOR TRACKING'),
       ],
-    );
-  }
-}
-
-/// The dark slot the receipt appears to feed out of.
-class _PrinterSlot extends StatelessWidget {
-  const _PrinterSlot();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 12,
-      decoration: BoxDecoration(
-        color: AppColors.slot,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.hairline),
-      ),
     );
   }
 }
