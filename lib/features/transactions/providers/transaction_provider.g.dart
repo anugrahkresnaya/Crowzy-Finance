@@ -273,54 +273,6 @@ final class LastUsedCategoryIdFamily extends $Family
   String toString() => r'lastUsedCategoryIdProvider';
 }
 
-@ProviderFor(recentTransactions)
-final recentTransactionsProvider = RecentTransactionsProvider._();
-
-final class RecentTransactionsProvider
-    extends
-        $FunctionalProvider<
-          List<TransactionModel>,
-          List<TransactionModel>,
-          List<TransactionModel>
-        >
-    with $Provider<List<TransactionModel>> {
-  RecentTransactionsProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'recentTransactionsProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$recentTransactionsHash();
-
-  @$internal
-  @override
-  $ProviderElement<List<TransactionModel>> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  List<TransactionModel> create(Ref ref) {
-    return recentTransactions(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(List<TransactionModel> value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<List<TransactionModel>>(value),
-    );
-  }
-}
-
-String _$recentTransactionsHash() =>
-    r'2832a694e5071ee392e1a19f85b1ee6381911512';
-
 /// Everything held across all accounts: opening balances plus every
 /// transaction. Transfers only move money between accounts, so they leave it
 /// unchanged (a transfer's fee is a transaction and does).

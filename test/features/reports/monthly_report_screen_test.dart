@@ -1,7 +1,11 @@
 import 'package:crowzy_finance/core/theme/app_theme.dart';
+import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
+import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
+import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/reports/providers/report_provider.dart';
 import 'package:crowzy_finance/features/reports/ui/monthly_report_screen.dart';
@@ -17,6 +21,17 @@ final _may = DateTime(2020, 5);
 class _FixedMonth extends SelectedReportMonth {
   @override
   DateTime build() => _may;
+}
+
+// The Activity screen that "View in Activity" opens also shows transfers.
+class _NoAccounts extends AccountList {
+  @override
+  Future<List<AccountModel>> build() async => const [];
+}
+
+class _NoTransfers extends TransferList {
+  @override
+  Future<List<TransferModel>> build() async => const [];
 }
 
 class _FakeTransactions extends TransactionList {
@@ -87,6 +102,9 @@ void main() {
           selectedReportMonthProvider.overrideWith(_FixedMonth.new),
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
+          accountListProvider.overrideWith(_NoAccounts.new),
+          transferListProvider.overrideWith(_NoTransfers.new),
+          defaultAccountIdProvider.overrideWithValue(null),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: const MonthlyReportScreen()),
       ),

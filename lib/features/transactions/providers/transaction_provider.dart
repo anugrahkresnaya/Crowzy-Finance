@@ -95,12 +95,6 @@ String? lastUsedCategoryId(Ref ref, TransactionType type) {
   return box.get('$_lastUsedCategoryKeyPrefix${type.name}') as String?;
 }
 
-@riverpod
-List<TransactionModel> recentTransactions(Ref ref) {
-  final transactions = ref.watch(transactionListProvider).value ?? const [];
-  return transactions.take(5).toList();
-}
-
 /// Everything held across all accounts: opening balances plus every
 /// transaction. Transfers only move money between accounts, so they leave it
 /// unchanged (a transfer's fee is a transaction and does).

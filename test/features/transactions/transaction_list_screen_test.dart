@@ -1,7 +1,13 @@
+import 'package:crowzy_finance/core/theme/app_colors.dart';
 import 'package:crowzy_finance/core/theme/app_theme.dart';
+import 'package:crowzy_finance/data/models/account_model.dart';
+import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
+import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
+import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
 import 'package:crowzy_finance/features/transactions/ui/transaction_list_screen.dart';
@@ -11,6 +17,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 late List<TransactionModel> _seed;
+List<TransferModel> _transferSeed = [];
+
+class _FakeTransfers extends TransferList {
+  @override
+  Future<List<TransferModel>> build() async => _transferSeed;
+}
+
+class _FakeAccounts extends AccountList {
+  @override
+  Future<List<AccountModel>> build() async => [
+        for (final (id, name, type) in [
+          ('cash', 'Cash', AccountType.cash),
+          ('bca', 'BCA', AccountType.bank),
+          ('dana', 'DANA', AccountType.ewallet),
+        ])
+          AccountModel(
+            id: id,
+            userId: 'u1',
+            name: name,
+            type: type,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          ),
+      ];
+}
 
 class _FakeTransactions extends TransactionList {
   @override
@@ -58,8 +89,35 @@ void main() {
         updatedAt: date,
       );
 
-  Future<void> pump(WidgetTester tester, List<TransactionModel> transactions) async {
+  TransferModel transfer(
+    String id,
+    DateTime date, {
+    double amount = 500000,
+    double fee = 0,
+    String from = 'bca',
+    String to = 'dana',
+    String? note,
+  }) =>
+      TransferModel(
+        id: id,
+        userId: 'u1',
+        fromAccountId: from,
+        toAccountId: to,
+        amount: amount,
+        fee: fee,
+        note: note,
+        date: date,
+        createdAt: date,
+        updatedAt: date,
+      );
+
+  Future<void> pump(
+    WidgetTester tester,
+    List<TransactionModel> transactions, {
+    List<TransferModel> transfers = const [],
+  }) async {
     _seed = transactions;
+    _transferSeed = transfers;
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -68,6 +126,9 @@ void main() {
         overrides: [
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
+          accountListProvider.overrideWith(_FakeAccounts.new),
+          transferListProvider.overrideWith(_FakeTransfers.new),
+          defaultAccountIdProvider.overrideWithValue('cash'),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: const TransactionListScreen()),
       ),
@@ -177,7 +238,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TODAY'), findsNothing);
-    expect(find.text('Today · Food'), findsNWidgets(2));
+    expect(find.text('Today · Food · Cash'), findsNWidgets(2));
     expect(
       tester.getTopLeft(find.text('Big')).dy,
       lessThan(tester.getTopLeft(find.text('Small')).dy),
@@ -201,6 +262,7 @@ void main() {
 
   testWidgets('can open on a given month', (tester) async {
     _seed = [tx('then', DateTime(2020, 5, 5), note: 'Long ago')];
+    _transferSeed = [];
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -209,6 +271,9 @@ void main() {
         overrides: [
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
+          accountListProvider.overrideWith(_FakeAccounts.new),
+          transferListProvider.overrideWith(_FakeTransfers.new),
+          defaultAccountIdProvider.overrideWithValue('cash'),
         ],
         child: MaterialApp(
           theme: AppTheme.dark,
@@ -220,5 +285,205 @@ void main() {
 
     expect(find.text('MAY 2020'), findsOneWidget);
     expect(find.text('Long ago'), findsOneWidget);
+  });
+
+  group('transfers', () {
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    testWidgets('appear in the day with their own look, route and brass amount', (tester) async {
+      await pump(
+        tester,
+        [tx('a', yesterday, amount: 68000, note: 'Lunch')],
+        transfers: [transfer('t', yesterday, note: 'Top up DANA')],
+      );
+
+      expect(find.text('Top up DANA'), findsOneWidget);
+      expect(find.text('BCA → DANA · Transfer'), findsOneWidget);
+      final amount = tester.widget<Text>(find.text('500.000'));
+      expect(amount.style!.color, AppColors.brass);
+      expect(find.text('+500.000'), findsNothing);
+      expect(find.text('−500.000'), findsNothing);
+    });
+
+    testWidgets('never count towards the day total, which is only what was spent', (tester) async {
+      await pump(
+        tester,
+        [tx('a', yesterday, amount: 68000, note: 'Lunch')],
+        transfers: [transfer('t', yesterday, amount: 5000000)],
+      );
+
+      expect(find.text('−68.000'), findsNWidgets(2)); // the row and the day total
+      expect(find.text('+4.932.000'), findsNothing);
+    });
+
+    testWidgets('a day with only a transfer has no total', (tester) async {
+      await pump(tester, const [], transfers: [transfer('t', yesterday, note: 'Top up')]);
+
+      expect(find.text('YESTERDAY'), findsOneWidget);
+      expect(find.text('+0'), findsNothing);
+      expect(find.text('−0'), findsNothing);
+    });
+
+    testWidgets('the fee is a normal expense row, named for its route, and the day total includes it', (tester) async {
+      final fee = TransactionModel(
+        id: 'fee',
+        userId: 'u1',
+        amount: 2500,
+        type: TransactionType.expense,
+        categoryId: 'food',
+        note: 'Transfer fee',
+        accountId: 'bca',
+        transferId: 't',
+        date: yesterday,
+        createdAt: yesterday,
+        updatedAt: yesterday,
+      );
+      await pump(
+        tester,
+        [tx('lunch', yesterday, amount: 68000, note: 'Lunch'), fee],
+        transfers: [transfer('t', yesterday, fee: 2500, note: 'Top up DANA')],
+      );
+
+      expect(find.text('Transfer fee'), findsOneWidget);
+      expect(find.text('Food · BCA → DANA'), findsOneWidget);
+      expect(find.text('−70.500'), findsOneWidget); // day total
+    });
+
+    testWidgets('a transaction names its account, the default one when it has none', (tester) async {
+      await pump(tester, [
+        tx('a', today, note: 'Lunch'),
+        TransactionModel(
+          id: 'b',
+          userId: 'u1',
+          amount: 1,
+          type: TransactionType.expense,
+          categoryId: 'food',
+          note: 'Ride',
+          accountId: 'dana',
+          date: today,
+          createdAt: today,
+          updatedAt: today,
+        ),
+      ]);
+
+      expect(find.text('Food · Cash'), findsOneWidget);
+      expect(find.text('Food · DANA'), findsOneWidget);
+    });
+
+    testWidgets('the Transfers chip shows only transfers', (tester) async {
+      await pump(
+        tester,
+        [tx('a', today, note: 'Lunch')],
+        transfers: [transfer('t', today, note: 'Top up DANA')],
+      );
+
+      await tester.tap(find.text('Transfers'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Top up DANA'), findsOneWidget);
+      expect(find.text('Lunch'), findsNothing);
+    });
+
+    testWidgets('Expenses and Income leave them out', (tester) async {
+      await pump(
+        tester,
+        [tx('a', today, note: 'Lunch')],
+        transfers: [transfer('t', today, note: 'Top up DANA')],
+      );
+
+      await tester.tap(find.text('Expenses'));
+      await tester.pumpAndSettle();
+      expect(find.text('Top up DANA'), findsNothing);
+
+      await tester.tap(find.text('Income'));
+      await tester.pumpAndSettle();
+      expect(find.text('Top up DANA'), findsNothing);
+    });
+
+    testWidgets('search finds a transfer by an account name', (tester) async {
+      await pump(
+        tester,
+        [tx('a', today, note: 'Lunch')],
+        transfers: [transfer('t', today, to: 'cash', note: 'Cash out')],
+      );
+
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'cash');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cash out'), findsOneWidget);
+      expect(find.text('Lunch'), findsNothing);
+    });
+
+    testWidgets('sorted by amount a transfer sits among the rest and shows its date', (tester) async {
+      await pump(
+        tester,
+        [tx('small', today, amount: 10000, note: 'Small')],
+        transfers: [transfer('t', today, amount: 900000, note: 'Big move')],
+      );
+
+      await tester.tap(find.byTooltip('Sort and filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Highest amount'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TODAY'), findsNothing);
+      expect(find.text('Today · BCA → DANA'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Big move')).dy,
+        lessThan(tester.getTopLeft(find.text('Small')).dy),
+      );
+    });
+
+    testWidgets('tapping one opens its receipt', (tester) async {
+      await pump(tester, const [], transfers: [transfer('t', today, note: 'Top up DANA')]);
+
+      await tester.tap(find.text('Top up DANA'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TRANSFER RECEIPT'), findsOneWidget);
+    });
+
+    testWidgets('tapping a transfer fee opens the transfer receipt, not a transaction one', (tester) async {
+      final fee = TransactionModel(
+        id: 'fee',
+        userId: 'u1',
+        amount: 2500,
+        type: TransactionType.expense,
+        categoryId: 'food',
+        note: 'Transfer fee',
+        accountId: 'bca',
+        transferId: 't',
+        date: today,
+        createdAt: today,
+        updatedAt: today,
+      );
+      await pump(tester, [fee], transfers: [transfer('t', today, fee: 2500, note: 'Top up DANA')]);
+
+      await tester.tap(find.text('Transfer fee'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TRANSFER RECEIPT'), findsOneWidget);
+      expect(find.text('TRANSACTION RECEIPT'), findsNothing);
+    });
+
+    testWidgets('choosing a category leaves transfers out', (tester) async {
+      await pump(
+        tester,
+        [tx('a', today, note: 'Lunch')],
+        transfers: [transfer('t', today, note: 'Top up DANA')],
+      );
+
+      await tester.tap(find.byTooltip('Sort and filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Category…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Food').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lunch'), findsOneWidget);
+      expect(find.text('Top up DANA'), findsNothing);
+    });
   });
 }

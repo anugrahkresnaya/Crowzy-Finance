@@ -8,7 +8,10 @@ import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/balance_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
+import '../../../data/models/account_model.dart';
+import '../../../data/models/transfer_model.dart';
 import '../../accounts/providers/account_provider.dart';
+import '../../accounts/providers/transfer_provider.dart';
 import '../../accounts/ui/accounts_screen.dart';
 import '../../alerts/providers/alert_provider.dart';
 import '../../alerts/ui/alerts_list_screen.dart';
@@ -16,10 +19,10 @@ import '../../alerts/ui/widgets/alerts_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../categories/ui/category_list_screen.dart';
+import '../../transactions/providers/activity_provider.dart';
 import '../../transactions/providers/transaction_provider.dart';
-import '../../transactions/ui/transaction_detail_screen.dart';
 import '../../transactions/ui/transaction_list_screen.dart';
-import '../../transactions/ui/widgets/transaction_tile.dart';
+import '../../transactions/ui/widgets/activity_row.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
 import '../../wishlist/ui/widgets/goal_highlight_tile.dart';
 import '../../wishlist/ui/wishlist_list_screen.dart';
@@ -34,15 +37,18 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final allTimeBalance = ref.watch(allTimeBalanceProvider);
     final month = ref.watch(thisMonthSummaryProvider);
-    final recentTransactions = ref.watch(recentTransactionsProvider).take(3).toList();
+    final recent = ref.watch(recentActivityProvider).take(3).toList();
     final activeGoals = ref.watch(activeWishlistGoalsProvider);
     final unreadAlerts = ref.watch(unreadAlertsProvider);
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final categoryById = {for (final c in categories) c.id: c};
 
-    final accounts = (ref.watch(accountListProvider).value ?? const [])
-        .where((a) => !a.isArchived)
-        .toList();
+    final allAccounts = ref.watch(accountListProvider).value ?? const <AccountModel>[];
+    final accounts = allAccounts.where((a) => !a.isArchived).toList();
+    final accountNames = {for (final a in allAccounts) a.id: a.name};
+    final transfersById = {
+      for (final t in ref.watch(transferListProvider).value ?? const <TransferModel>[]) t.id: t,
+    };
     final goal = activeGoals.isEmpty ? null : activeGoals.first;
     final hasNotice = unreadAlerts.isNotEmpty;
 
@@ -107,25 +113,24 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            if (recentTransactions.isEmpty)
+            if (recent.isEmpty)
               const EmptyState(
                 icon: Icons.receipt_long_outlined,
                 message: 'No transactions yet — tap + to add one',
               )
             else
-              ...recentTransactions.indexed.map(
-                (entry) {
-                  final (index, transaction) = entry;
+              ...recent.indexed.map(
+                (item) {
+                  final (index, entry) = item;
                   return Padding(
-                    key: ValueKey(transaction.id),
+                    key: ValueKey(entry.id),
                     padding: EdgeInsets.zero,
-                    child: TransactionTile(
-                      transaction: transaction,
-                      category: categoryById[transaction.categoryId],
-                      onTap: () => pushSlide(
-                        context,
-                        TransactionDetailScreen(transactionId: transaction.id),
-                      ),
+                    child: ActivityRow(
+                      entry: entry,
+                      categoryById: categoryById,
+                      accountNames: accountNames,
+                      transfersById: transfersById,
+                      defaultAccountId: ref.watch(defaultAccountIdProvider),
                     ).entrance(context, index: index, axis: Axis.horizontal),
                   );
                 },

@@ -15,7 +15,10 @@ import 'package:crowzy_finance/features/alerts/providers/alert_provider.dart';
 import 'package:crowzy_finance/features/auth/providers/auth_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/home/ui/home_screen.dart';
+import 'package:crowzy_finance/features/transactions/providers/activity_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
+import 'package:crowzy_finance/features/transactions/utils/activity_feed.dart';
+import 'package:crowzy_finance/core/theme/app_colors.dart';
 import 'package:crowzy_finance/features/transactions/utils/month_summary.dart';
 import 'package:crowzy_finance/features/wishlist/providers/wishlist_provider.dart';
 import 'package:flutter/material.dart';
@@ -37,9 +40,11 @@ class _FakeAccounts extends AccountList {
   Future<List<AccountModel>> build() async => _accounts;
 }
 
+List<TransferModel> _transfers = [];
+
 class _FakeTransfers extends TransferList {
   @override
-  Future<List<TransferModel>> build() async => const [];
+  Future<List<TransferModel>> build() async => _transfers;
 }
 
 AccountModel _account(String id, String name, {bool archived = false}) => AccountModel(
@@ -105,11 +110,13 @@ void main() {
   Future<void> pumpHome(
     WidgetTester tester, {
     List<TransactionModel> recent = const [],
+    List<TransferModel> transfers = const [],
     List<WishlistModel> goals = const [],
     List<AlertModel> alerts = const [],
     List<AccountModel>? accounts,
   }) async {
     _all = recent;
+    _transfers = transfers;
     _accounts = accounts ?? [_account('a', 'BCA'), _account('b', 'DANA'), _account('c', 'Cash')];
     await tester.binding.setSurfaceSize(const Size(390, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -123,7 +130,8 @@ void main() {
             const MonthSummary(income: 18200000, expense: 5720000, changePercent: 8.4),
           ),
           transactionListProvider.overrideWith(_FakeTransactions.new),
-          recentTransactionsProvider.overrideWithValue(recent),
+          recentActivityProvider.overrideWithValue(mergeActivity(recent, transfers)),
+          defaultAccountIdProvider.overrideWithValue('c'),
           activeWishlistGoalsProvider.overrideWithValue(goals),
           unreadAlertsProvider.overrideWithValue(alerts),
           categoryListProvider.overrideWith(_FakeCategories.new),
@@ -204,6 +212,74 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TRANSACTION RECEIPT'), findsOneWidget);
+  });
+
+  group('transfers in Recent', () {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+
+    TransferModel transfer({String? note = 'Top up DANA'}) => TransferModel(
+          id: 't1',
+          userId: 'u',
+          fromAccountId: 'a',
+          toAccountId: 'b',
+          amount: 500000,
+          note: note,
+          date: yesterday,
+          createdAt: yesterday,
+          updatedAt: yesterday,
+        );
+
+    testWidgets('a transfer shows between the transactions with its route and a brass amount', (tester) async {
+      await pumpHome(
+        tester,
+        recent: [tx('1', 1000, note: 'Lunch')],
+        transfers: [transfer()],
+      );
+
+      expect(find.text('Top up DANA'), findsOneWidget);
+      expect(find.text('Yesterday · BCA → DANA'), findsOneWidget);
+      final amount = tester.widget<Text>(find.text('500.000'));
+      expect(amount.style!.color, AppColors.brass);
+      expect(find.text('Lunch'), findsOneWidget);
+    });
+
+    testWidgets('only the latest three entries show, transfers counting like any other', (tester) async {
+      await pumpHome(
+        tester,
+        recent: [
+          tx('1', 1000, note: 'One'),
+          tx('2', 2000, note: 'Two'),
+          tx('3', 3000, note: 'Three'),
+        ],
+        transfers: [transfer()],
+      );
+
+      // The transfer is from yesterday, so it ranks after today's three.
+      expect(find.text('Top up DANA'), findsNothing);
+      expect(find.text('Three'), findsOneWidget);
+    });
+
+    testWidgets('a feed of only transfers is not the empty state', (tester) async {
+      await pumpHome(tester, transfers: [transfer()]);
+
+      expect(find.textContaining('No transactions yet'), findsNothing);
+      expect(find.text('Top up DANA'), findsOneWidget);
+    });
+
+    testWidgets('tapping one opens its receipt', (tester) async {
+      await pumpHome(tester, transfers: [transfer()]);
+
+      await tester.tap(find.text('Top up DANA'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TRANSFER RECEIPT'), findsOneWidget);
+    });
+
+    testWidgets('Recent does not add account names to transaction lines', (tester) async {
+      await pumpHome(tester, recent: [tx('1', 1000, note: 'Lunch')]);
+
+      expect(find.textContaining('Food ·'), findsNothing);
+    });
   });
 
   group('accounts strip', () {

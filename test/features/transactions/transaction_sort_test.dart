@@ -1,10 +1,12 @@
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
+import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/features/transactions/utils/activity_feed.dart';
 import 'package:crowzy_finance/features/transactions/utils/transaction_sort.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  TransactionModel tx(String id, double amount, DateTime date) => TransactionModel(
+  ActivityEntry tx(String id, double amount, DateTime date) => TransactionEntry(TransactionModel(
         id: id,
         userId: 'u1',
         amount: amount,
@@ -13,15 +15,15 @@ void main() {
         date: date,
         createdAt: DateTime(2026, 7, 1),
         updatedAt: DateTime(2026, 7, 1),
-      );
+      ));
 
   final a = tx('a', 50, DateTime(2026, 7, 3));
   final b = tx('b', 200, DateTime(2026, 7, 1));
   final c = tx('c', 10, DateTime(2026, 7, 5));
   final input = [a, b, c];
 
-  List<String> ids(TransactionSort sort, [List<TransactionModel>? list]) =>
-      sortTransactions(list ?? input, sort).map((t) => t.id).toList();
+  List<String> ids(TransactionSort sort, [List<ActivityEntry>? list]) =>
+      sortActivity(list ?? input, sort).map((t) => t.id).toList();
 
   test('sorts by date, newest and oldest first', () {
     expect(ids(TransactionSort.newest), ['c', 'a', 'b']);
@@ -43,7 +45,43 @@ void main() {
   });
 
   test('does not mutate the input list', () {
-    sortTransactions(input, TransactionSort.highestAmount);
+    sortActivity(input, TransactionSort.highestAmount);
     expect(input.map((t) => t.id), ['a', 'b', 'c']);
+  });
+
+  test('transfers sort alongside transactions, by their amount', () {
+    final transfer = TransferEntry(TransferModel(
+      id: 'tr',
+      userId: 'u1',
+      fromAccountId: 'x',
+      toAccountId: 'y',
+      amount: 120,
+      fee: 9999, // the fee is its own expense and does not count here
+      date: DateTime(2026, 7, 2),
+      createdAt: DateTime(2026, 7, 1),
+      updatedAt: DateTime(2026, 7, 1),
+    ));
+    final mixed = [...input, transfer];
+
+    expect(ids(TransactionSort.highestAmount, mixed), ['b', 'tr', 'a', 'c']);
+    expect(ids(TransactionSort.newest, mixed), ['c', 'a', 'tr', 'b']);
+  });
+
+  test('a transfer ranks before a transaction from the same moment, in either date order', () {
+    final moment = DateTime(2026, 7, 4);
+    final transfer = TransferEntry(TransferModel(
+      id: 'tr',
+      userId: 'u1',
+      fromAccountId: 'x',
+      toAccountId: 'y',
+      amount: 1,
+      date: moment,
+      createdAt: moment,
+      updatedAt: moment,
+    ));
+    final same = [tx('same', 1, moment), transfer];
+
+    expect(ids(TransactionSort.newest, same), ['tr', 'same']);
+    expect(ids(TransactionSort.oldest, same), ['same', 'tr']);
   });
 }

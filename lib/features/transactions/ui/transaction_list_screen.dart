@@ -5,21 +5,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
-import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
 import '../../../core/widgets/month_switcher.dart';
 import '../../../data/models/category_model.dart';
-import '../../../data/models/transaction_model.dart';
-import '../../../data/models/transaction_type.dart';
+import '../../../data/models/transfer_model.dart';
+import '../../accounts/providers/account_provider.dart';
+import '../../accounts/providers/transfer_provider.dart';
 import '../../categories/providers/category_provider.dart';
+import '../providers/activity_provider.dart';
 import '../providers/transaction_provider.dart';
-import '../utils/transaction_filter.dart';
+import '../utils/activity_feed.dart';
 import '../utils/transaction_sort.dart';
-import 'transaction_detail_screen.dart';
-import 'widgets/transaction_tile.dart';
+import 'widgets/activity_row.dart';
 
 class TransactionListScreen extends ConsumerStatefulWidget {
   const TransactionListScreen({super.key, this.initialMonth});
@@ -37,7 +37,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
   late DateTime _month = DateFormatter.startOfMonth(widget.initialMonth ?? DateTime.now());
   DateTimeRange? _dateRange;
   String? _categoryId;
-  TransactionType? _type;
+  ActivityFilter _filter = ActivityFilter.all;
   TransactionSort _sort = TransactionSort.newest;
   bool _searching = false;
   final _searchController = TextEditingController();
@@ -167,15 +167,16 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
                 ),
               ),
             _periodRow(context),
-            Padding(
+            // Four chips only just fit a phone, so on a narrower one the row scrolls.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: Row(
                 children: [
-                  _typeChip('All', null),
-                  const SizedBox(width: 8),
-                  _typeChip('Expenses', TransactionType.expense),
-                  const SizedBox(width: 8),
-                  _typeChip('Income', TransactionType.income),
+                  for (final (index, filter) in ActivityFilter.values.indexed) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    _typeChip(filter),
+                  ],
                 ],
               ),
             ),
@@ -211,7 +212,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
               child: transactionsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(child: Text('Failed to load transactions: $error')),
-                data: (transactions) => _list(context, transactions, categoriesAsync.value ?? const []),
+                data: (_) => _list(context, categoriesAsync.value ?? const []),
               ),
             ),
           ],
@@ -254,32 +255,35 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     );
   }
 
-  Widget _typeChip(String label, TransactionType? type) {
+  Widget _typeChip(ActivityFilter filter) {
     return ChoiceChip(
-      label: Text(label),
-      selected: _type == type,
+      label: Text(filter.label),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+      selected: _filter == filter,
       showCheckmark: false,
-      onSelected: (_) => setState(() => _type = type),
+      onSelected: (_) => setState(() => _filter = filter),
     );
   }
 
-  Widget _list(
-    BuildContext context,
-    List<TransactionModel> transactions,
-    List<CategoryModel> categories,
-  ) {
+  Widget _list(BuildContext context, List<CategoryModel> categories) {
     final categoryById = {for (final c in categories) c.id: c};
+    final accounts = ref.watch(accountListProvider).value ?? const [];
+    final accountNames = {for (final a in accounts) a.id: a.name};
+    final transfers = ref.watch(transferListProvider).value ?? const <TransferModel>[];
+    final transfersById = {for (final t in transfers) t.id: t};
+    final defaultAccountId = ref.watch(defaultAccountIdProvider);
     final query = _searchController.text;
 
-    final filtered = sortTransactions(
-      filterTransactions(
-        transactions,
+    final filtered = sortActivity(
+      filterActivity(
+        ref.watch(activityEntriesProvider),
         month: _month,
         dateRange: _dateRange,
         categoryId: _categoryId,
-        type: _type,
+        filter: _filter,
         query: query,
         categoryNames: {for (final c in categories) c.id: c.name},
+        accountNames: accountNames,
       ),
       _sort,
     );
@@ -300,15 +304,15 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     final entries = <Object>[];
     var rowIndex = 0;
     if (byDate) {
-      for (final group in groupByDay(filtered)) {
-        entries.add(group);
-        for (final transaction in group.transactions) {
-          entries.add((transaction: transaction, index: rowIndex++));
+      for (final day in groupActivityByDay(filtered)) {
+        entries.add(day);
+        for (final entry in day.entries) {
+          entries.add((entry: entry, index: rowIndex++));
         }
       }
     } else {
-      for (final transaction in filtered) {
-        entries.add((transaction: transaction, index: rowIndex++));
+      for (final entry in filtered) {
+        entries.add((entry: entry, index: rowIndex++));
       }
     }
 
@@ -316,21 +320,21 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
       itemCount: entries.length,
       itemBuilder: (context, i) {
-        final entry = entries[i];
-        if (entry is DayGroup) return _DayHeader(group: entry, key: ValueKey(entry.day));
+        final item = entries[i];
+        if (item is ActivityDay) return _DayHeader(day: item, key: ValueKey(item.day));
 
-        final (:transaction, :index) = entry as ({TransactionModel transaction, int index});
+        final (:entry, :index) = item as ({ActivityEntry entry, int index});
         return Padding(
-          key: ValueKey(transaction.id),
+          key: ValueKey(entry.id),
           padding: EdgeInsets.zero,
-          child: TransactionTile(
-            transaction: transaction,
-            category: categoryById[transaction.categoryId],
+          child: ActivityRow(
+            entry: entry,
+            categoryById: categoryById,
+            accountNames: accountNames,
+            transfersById: transfersById,
+            defaultAccountId: defaultAccountId,
             showDate: !byDate,
-            onTap: () => pushSlide(
-              context,
-              TransactionDetailScreen(transactionId: transaction.id),
-            ),
+            showAccount: true,
           ).entrance(context, index: index, axis: Axis.horizontal),
         );
       },
@@ -339,13 +343,13 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
 }
 
 class _DayHeader extends StatelessWidget {
-  const _DayHeader({super.key, required this.group});
+  const _DayHeader({super.key, required this.day});
 
-  final DayGroup group;
+  final ActivityDay day;
 
   @override
   Widget build(BuildContext context) {
-    final net = group.net;
+    final net = day.net;
     final color = net > 0
         ? AppColors.income
         : net < 0
@@ -363,13 +367,15 @@ class _DayHeader extends StatelessWidget {
         textBaseline: TextBaseline.alphabetic,
         children: [
           Text(
-            DateFormatter.relativeDayLong(group.day).toUpperCase(),
+            DateFormatter.relativeDayLong(day.day).toUpperCase(),
             style: AppText.eyebrow(context, color: AppColors.textMuted),
           ),
-          Text(
-            CurrencyFormatter.signed(net.abs(), income: net >= 0),
-            style: AppText.amount(context, size: 16, color: color),
-          ),
+          // A day with only transfers has no income or expense to total.
+          if (day.hasTotal)
+            Text(
+              CurrencyFormatter.signed(net.abs(), income: net >= 0),
+              style: AppText.amount(context, size: 16, color: color),
+            ),
         ],
       ),
     );
