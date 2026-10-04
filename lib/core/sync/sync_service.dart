@@ -1,10 +1,12 @@
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../data/models/account_model.dart';
 import '../../data/models/alert_model.dart';
 import '../../data/models/budget_model.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/transaction_model.dart';
+import '../../data/models/transfer_model.dart';
 import '../../data/models/wishlist_model.dart';
 
 class SyncStepFailure {
@@ -35,6 +37,8 @@ class SyncService {
     this._transactionBox,
     this._wishlistBox,
     this._budgetBox,
+    this._accountBox,
+    this._transferBox,
     this._alertsBox,
     this._syncMetaBox,
   );
@@ -44,6 +48,8 @@ class SyncService {
   final Box<Map> _transactionBox;
   final Box<Map> _wishlistBox;
   final Box<Map> _budgetBox;
+  final Box<Map> _accountBox;
+  final Box<Map> _transferBox;
   final Box<Map> _alertsBox;
   final Box _syncMetaBox;
 
@@ -65,11 +71,16 @@ class SyncService {
       }
     }
 
+    // Accounts and transfers go before transactions, which point at both.
     await run('push categories', _pushCategories);
+    await run('push accounts', _pushAccounts);
+    await run('push transfers', _pushTransfers);
     await run('push transactions', _pushTransactions);
     await run('push wishlist', _pushWishlist);
     await run('push budgets', _pushBudgets);
     await run('pull categories', () => _pullCategories(userId));
+    await run('pull accounts', () => _pullAccounts(userId));
+    await run('pull transfers', () => _pullTransfers(userId));
     await run('pull transactions', () => _pullTransactions(userId));
     await run('pull wishlist', () => _pullWishlist(userId));
     await run('pull budgets', () => _pullBudgets(userId));
@@ -127,6 +138,32 @@ class SyncService {
     await _client.from('budgets').upsert(dirty.map((b) => b.toSupabaseRow()).toList());
     for (final budget in dirty) {
       await _budgetBox.put(budget.id, budget.copyWith(isSynced: true).toJson());
+    }
+  }
+
+  Future<void> _pushAccounts() async {
+    final dirty = _accountBox.values
+        .map((raw) => AccountModel.fromJson(Map<String, dynamic>.from(raw)))
+        .where((account) => !account.isSynced)
+        .toList();
+    if (dirty.isEmpty) return;
+
+    await _client.from('accounts').upsert(dirty.map((b) => b.toSupabaseRow()).toList());
+    for (final account in dirty) {
+      await _accountBox.put(account.id, account.copyWith(isSynced: true).toJson());
+    }
+  }
+
+  Future<void> _pushTransfers() async {
+    final dirty = _transferBox.values
+        .map((raw) => TransferModel.fromJson(Map<String, dynamic>.from(raw)))
+        .where((transfer) => !transfer.isSynced)
+        .toList();
+    if (dirty.isEmpty) return;
+
+    await _client.from('transfers').upsert(dirty.map((b) => b.toSupabaseRow()).toList());
+    for (final transfer in dirty) {
+      await _transferBox.put(transfer.id, transfer.copyWith(isSynced: true).toJson());
     }
   }
 
@@ -249,6 +286,64 @@ class SyncService {
     if (newestSeen != null) await _setLastSyncedAt('budgets', userId, newestSeen);
   }
 
+  Future<void> _pullAccounts(String userId) async {
+    final since = _lastSyncedAt('accounts', userId);
+    var offset = 0;
+    DateTime? newestSeen;
+
+    while (true) {
+      final rows = await _client
+          .from('accounts')
+          .select()
+          .eq('user_id', userId)
+          .gt('updated_at', since.toIso8601String())
+          .order('updated_at')
+          .range(offset, offset + _pageSize - 1);
+      if (rows.isEmpty) break;
+
+      for (final row in rows) {
+        final remote = AccountModel.fromJson(Map<String, dynamic>.from(row)).copyWith(isSynced: true);
+        await _mergeAccounts(remote);
+        if (newestSeen == null || remote.updatedAt.isAfter(newestSeen)) {
+          newestSeen = remote.updatedAt;
+        }
+      }
+      if (rows.length < _pageSize) break;
+      offset += _pageSize;
+    }
+
+    if (newestSeen != null) await _setLastSyncedAt('accounts', userId, newestSeen);
+  }
+
+  Future<void> _pullTransfers(String userId) async {
+    final since = _lastSyncedAt('transfers', userId);
+    var offset = 0;
+    DateTime? newestSeen;
+
+    while (true) {
+      final rows = await _client
+          .from('transfers')
+          .select()
+          .eq('user_id', userId)
+          .gt('updated_at', since.toIso8601String())
+          .order('updated_at')
+          .range(offset, offset + _pageSize - 1);
+      if (rows.isEmpty) break;
+
+      for (final row in rows) {
+        final remote = TransferModel.fromJson(Map<String, dynamic>.from(row)).copyWith(isSynced: true);
+        await _mergeTransfers(remote);
+        if (newestSeen == null || remote.updatedAt.isAfter(newestSeen)) {
+          newestSeen = remote.updatedAt;
+        }
+      }
+      if (rows.length < _pageSize) break;
+      offset += _pageSize;
+    }
+
+    if (newestSeen != null) await _setLastSyncedAt('transfers', userId, newestSeen);
+  }
+
   /// Alerts are server-authored — there is no _pushAlerts, only a pull.
   Future<void> _pullAlerts(String userId) async {
     final since = _lastSyncedAt('alerts', userId);
@@ -313,6 +408,24 @@ class SyncService {
       if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
     }
     await _budgetBox.put(remote.id, remote.toJson());
+  }
+
+  Future<void> _mergeAccounts(AccountModel remote) async {
+    final raw = _accountBox.get(remote.id);
+    if (raw != null) {
+      final local = AccountModel.fromJson(Map<String, dynamic>.from(raw));
+      if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
+    }
+    await _accountBox.put(remote.id, remote.toJson());
+  }
+
+  Future<void> _mergeTransfers(TransferModel remote) async {
+    final raw = _transferBox.get(remote.id);
+    if (raw != null) {
+      final local = TransferModel.fromJson(Map<String, dynamic>.from(raw));
+      if (!local.isSynced || local.updatedAt.isAfter(remote.updatedAt)) return;
+    }
+    await _transferBox.put(remote.id, remote.toJson());
   }
 
   /// Unlike the other merges, this isn't a last-write-wins timestamp

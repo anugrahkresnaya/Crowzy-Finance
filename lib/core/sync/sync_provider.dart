@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/accounts/providers/account_provider.dart';
+import '../../features/accounts/providers/transfer_provider.dart';
 import '../../features/alerts/providers/alert_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/budgets/providers/budget_provider.dart';
@@ -22,6 +24,8 @@ SyncService syncService(Ref ref) {
     ref.watch(transactionBoxProvider),
     ref.watch(wishlistBoxProvider),
     ref.watch(budgetsBoxProvider),
+    ref.watch(accountsBoxProvider),
+    ref.watch(transfersBoxProvider),
     ref.watch(alertsBoxProvider),
     ref.watch(syncMetaBoxProvider),
   );
@@ -41,6 +45,8 @@ class SyncController extends _$SyncController {
         ref.read(transactionBoxProvider),
         ref.read(wishlistBoxProvider),
         ref.read(budgetsBoxProvider),
+        ref.read(accountsBoxProvider),
+        ref.read(transfersBoxProvider),
       ],
       onSync: syncNow,
     );
@@ -76,6 +82,8 @@ class SyncController extends _$SyncController {
     ref.invalidate(wishlistListProvider);
     ref.invalidate(alertListProvider);
     ref.invalidate(budgetListProvider);
+    ref.invalidate(accountListProvider);
+    ref.invalidate(transferListProvider);
 
     final newUnread = ref.read(unreadAlertsProvider).length - beforeUnread;
     if (newUnread > 0) {
