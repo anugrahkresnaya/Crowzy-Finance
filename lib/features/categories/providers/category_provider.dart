@@ -33,8 +33,9 @@ class CategoryList extends _$CategoryList {
   Future<List<CategoryModel>> build() async {
     final repository = ref.watch(categoryRepositoryProvider);
     var categories = repository.getAll();
-    if (categories.isEmpty) {
-      for (final category in DefaultCategories.build()) {
+    final missing = DefaultCategories.missingFrom(categories.map((c) => c.id));
+    if (missing.isNotEmpty) {
+      for (final category in missing) {
         await repository.save(category);
       }
       categories = repository.getAll();

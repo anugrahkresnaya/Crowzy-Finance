@@ -16,6 +16,7 @@ class IconMapper {
     'local_hospital': Icons.local_hospital,
     'school': Icons.school,
     'category': Icons.category,
+    'payments': Icons.payments,
     'savings': Icons.savings,
     'home': Icons.home,
     'flight': Icons.flight,

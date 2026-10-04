@@ -1,21 +1,20 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'transaction_model.dart';
+part of 'transfer_model.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_TransactionModel _$TransactionModelFromJson(Map<String, dynamic> json) =>
-    _TransactionModel(
+_TransferModel _$TransferModelFromJson(Map<String, dynamic> json) =>
+    _TransferModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
+      fromAccountId: json['from_account_id'] as String,
+      toAccountId: json['to_account_id'] as String,
       amount: _amountFromJson(json['amount']),
-      type: $enumDecode(_$TransactionTypeEnumMap, json['type']),
-      categoryId: json['category_id'] as String,
+      fee: json['fee'] == null ? 0 : _amountFromJson(json['fee']),
       note: json['note'] as String?,
-      accountId: json['account_id'] as String?,
-      transferId: json['transfer_id'] as String?,
       date: DateTime.parse(json['date'] as String),
       isDeleted: json['is_deleted'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -23,24 +22,18 @@ _TransactionModel _$TransactionModelFromJson(Map<String, dynamic> json) =>
       isSynced: json['is_synced'] as bool? ?? true,
     );
 
-Map<String, dynamic> _$TransactionModelToJson(_TransactionModel instance) =>
+Map<String, dynamic> _$TransferModelToJson(_TransferModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'user_id': instance.userId,
+      'from_account_id': instance.fromAccountId,
+      'to_account_id': instance.toAccountId,
       'amount': _amountToJson(instance.amount),
-      'type': _$TransactionTypeEnumMap[instance.type]!,
-      'category_id': instance.categoryId,
+      'fee': _amountToJson(instance.fee),
       'note': instance.note,
-      'account_id': instance.accountId,
-      'transfer_id': instance.transferId,
       'date': instance.date.toIso8601String(),
       'is_deleted': instance.isDeleted,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
       'is_synced': instance.isSynced,
     };
-
-const _$TransactionTypeEnumMap = {
-  TransactionType.income: 'income',
-  TransactionType.expense: 'expense',
-};

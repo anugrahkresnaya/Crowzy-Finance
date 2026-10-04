@@ -7,6 +7,9 @@ import '../../data/models/transaction_type.dart';
 class DefaultCategories {
   DefaultCategories._();
 
+  /// Where the optional fee of a transfer is recorded as an expense.
+  static const feesId = '00000000-0000-4000-8000-000000000013';
+
   static const _defaults = <(String id, String name, String icon, TransactionType type)>[
     ('00000000-0000-4000-8000-000000000001', 'Salary', 'work', TransactionType.income),
     ('00000000-0000-4000-8000-000000000002', 'Business', 'store', TransactionType.income),
@@ -20,7 +23,15 @@ class DefaultCategories {
     ('00000000-0000-4000-8000-000000000010', 'Health', 'local_hospital', TransactionType.expense),
     ('00000000-0000-4000-8000-000000000011', 'Education', 'school', TransactionType.expense),
     ('00000000-0000-4000-8000-000000000012', 'Other Expense', 'category', TransactionType.expense),
+    (feesId, 'Fees', 'payments', TransactionType.expense),
   ];
+
+  /// The defaults whose ids are not in [existingIds], so a default added in a
+  /// later version also reaches installs whose box was seeded long ago.
+  static List<CategoryModel> missingFrom(Iterable<String> existingIds) {
+    final have = existingIds.toSet();
+    return build().where((category) => !have.contains(category.id)).toList();
+  }
 
   static List<CategoryModel> build() {
     final now = DateTime.now();
