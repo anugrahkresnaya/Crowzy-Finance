@@ -22,17 +22,6 @@ The Supabase URL and publishable key are in
 `lib/core/constants/supabase_constants.dart`. To point at your own project,
 change them there.
 
-### Accounts and transfers
-
-Every income or expense belongs to an account (Bank, E-wallet or Cash). Each
-user gets a default Cash account, created on first use, and a transaction with
-no account counts as being on it, so older data needs no migration. A transfer
-moves money between two accounts; it is stored on its own, never as income or
-expense, so reports, budgets, alerts and the AI never see it. An optional fee is
-recorded as an ordinary expense (category Fees) linked to its transfer, which is
-the only part that counts as spending. The Home balance is the sum of all
-accounts, archived ones included.
-
 ### Look and feel
 
 The app is dark-only (bottle-green, ivory and brass). Titles and amounts use
@@ -72,29 +61,36 @@ Migrations live in `supabase/migrations/`:
    (`supabase db diff`) before applying it there.
 2. `20260724000000_alerts.sql` — `alerts` table, the `evaluate_alerts()`
    rule function, and a daily pg_cron job.
-3. `20261003000000_budgets.sql` — the optional per-category `budgets` table
-   (with RLS).
-4. `20261003000100_budget_and_positive_alerts.sql` — adds the `budget_limit`,
-   `income_received` and `goal_on_track` alert rules to `evaluate_alerts()`.
+3. `20261005000000_accounts_archive.sql` — adds `is_archived` to `accounts`
+   (additive, safe to run twice).
 
-5. `20261004000000_accounts_and_transfers.sql` — the `accounts` and
-   `transfers` tables (with RLS), `account_id` and `transfer_id` on
-   `transactions`, the default "Fees" category, and a change to
-   `evaluate_alerts()` so a transfer's fee never raises a category-spike alert.
+**These files are a partial record of the live project.** The project in use was
+built with more migrations than this repository holds: `accounts`,
+`transfer_group_id` on `transactions`, `budgets`, the *Transfer In* and
+*Transfer Out* categories, `format_rp()`, the `budget_exceeded` alert rule,
+recurring transactions and device tokens. The app is written against that live
+schema, so **do not run `supabase db push`** against it: the migration history
+there does not match this directory. Run the one new statement by hand instead,
+in the dashboard's SQL editor, once, before releasing the app version that
+archives accounts. Older builds are unaffected by it.
 
-**Deploy order differs between the two groups:**
+For a brand-new project, `supabase db pull` from the live one gives a complete
+set of migrations.
 
-- Migrations 3 and 4: ship the app update **before** running them. An older app
-  build cannot parse the new alert types.
-- Migration 5: run it **before** shipping the app update. The new app sends
-  `account_id` and `transfer_id` with every transaction, so the columns must
-  exist first. Older app builds are unaffected, since the columns are nullable
-  and an upsert that leaves them out keeps what is there.
+### How accounts and transfers are stored
 
-```bash
-supabase link --project-ref <ref>
-supabase db push
-```
+Accounts are `bank`, `e_wallet` or `cash`, with an `initial_balance`, an optional
+`is_main` flag (the default source for new transactions and transfers) and, since
+the migration above, `is_archived`. A transaction with no `account_id` is
+*unassigned*; it still counts in the total.
+
+A transfer has no table of its own. It is two ordinary transactions that share a
+`transfer_group_id` and the same date and note: an expense in the *Transfer Out*
+category on the source account and an income in *Transfer In* on the destination.
+The app pairs them back into one transfer for display. Because the two legs are
+income and expense in the data, reports, budgets, alerts and the AI contexts all
+leave them out. A transfer's optional fee is a separate, ordinary expense in the
+user's *Admin Fee* category, so it counts as spending.
 
 ### Edge Functions
 
