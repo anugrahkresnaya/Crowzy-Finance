@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
@@ -9,6 +8,7 @@ import '../../../core/utils/app_page_route.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/icon_mapper.dart';
+import '../../../core/widgets/amount_field.dart';
 import '../../../core/widgets/press_scale.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/transaction_model.dart';
@@ -149,7 +149,7 @@ class _AddEditTransactionScreenState
               const SizedBox(height: 28),
               Center(child: Text('AMOUNT', style: AppText.eyebrow(context))),
               const SizedBox(height: 8),
-              _AmountField(controller: _amountController, enabled: !isLoading),
+              AmountField(controller: _amountController, enabled: !isLoading),
               const SizedBox(height: 26),
               Text('CATEGORY', style: AppText.eyebrow(context)),
               const SizedBox(height: 10),
@@ -254,70 +254,6 @@ class _AddEditTransactionScreenState
               : Text(_isEditing ? 'Save changes' : 'Save transaction'),
         ),
       ),
-    );
-  }
-}
-
-/// Large serif amount with a brass underline. The "Rp" sits beside the figure.
-class _AmountField extends StatelessWidget {
-  const _AmountField({required this.controller, required this.enabled});
-
-  final TextEditingController controller;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final figure = AppText.amount(context, size: 56, color: AppColors.ivory);
-    const none = InputBorder.none;
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text('Rp', style: AppText.amount(context, size: 24, color: AppColors.brass)),
-            const SizedBox(width: 8),
-            IntrinsicWidth(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 56),
-                child: TextFormField(
-                  controller: controller,
-                  enabled: enabled,
-                  textAlign: TextAlign.center,
-                  style: figure,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    const ThousandsInputFormatter(),
-                  ],
-                  validator: (value) {
-                    final parsed = ThousandsInputFormatter.parse(value ?? '');
-                    if (parsed == null || parsed <= 0) return 'Enter a valid amount';
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    hintText: '0',
-                    hintStyle: figure.copyWith(color: AppColors.textFaint),
-                    isDense: true,
-                    filled: false,
-                    border: none,
-                    enabledBorder: none,
-                    focusedBorder: none,
-                    disabledBorder: none,
-                    errorBorder: none,
-                    focusedErrorBorder: none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Container(height: 1, margin: const EdgeInsets.symmetric(horizontal: 40), color: AppColors.brassOutline),
-      ],
     );
   }
 }
