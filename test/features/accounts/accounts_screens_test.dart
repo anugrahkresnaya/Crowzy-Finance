@@ -7,6 +7,7 @@ import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
 import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
+import 'package:crowzy_finance/features/accounts/ui/account_detail_screen.dart';
 import 'package:crowzy_finance/features/accounts/ui/account_form_screen.dart';
 import 'package:crowzy_finance/features/accounts/ui/accounts_screen.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
@@ -75,6 +76,14 @@ class _FakeAccounts extends AccountList {
   }
 }
 
+class _NoMemory implements LastTransferSource {
+  @override
+  String? get value => null;
+
+  @override
+  Future<void> save(String accountId) async {}
+}
+
 class _FakeTransactions extends TransactionList {
   @override
   Future<List<TransactionModel>> build() async => _transactions;
@@ -111,6 +120,7 @@ void main() {
           transactionListProvider.overrideWith(_FakeTransactions.new),
           transferListProvider.overrideWith(_FakeTransfers.new),
           defaultAccountIdProvider.overrideWithValue('cash'),
+          lastTransferSourceProvider.overrideWithValue(_NoMemory()),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: screen),
       ),
@@ -198,20 +208,29 @@ void main() {
       expect(find.text('ACROSS 1 ACCOUNT'), findsOneWidget);
     });
 
-    testWidgets('tapping an account edits it, and the + button starts a new one', (tester) async {
+    testWidgets('tapping an account opens its page, and the + button starts a new one', (tester) async {
       await pump(tester, const AccountsScreen());
 
       await tester.tap(find.text('DANA'));
       await tester.pumpAndSettle();
-      expect(find.text('Edit account'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'DANA'), findsOneWidget);
+      expect(find.byType(AccountDetailScreen), findsOneWidget);
+      expect(find.text('E-WALLET'), findsOneWidget);
 
-      Navigator.of(tester.element(find.text('Edit account'))).pop();
+      Navigator.of(tester.element(find.byType(AccountDetailScreen))).pop();
       await tester.pumpAndSettle();
 
       await tester.tap(find.byTooltip('Add account'));
       await tester.pumpAndSettle();
       expect(find.text('New account'), findsOneWidget);
+    });
+
+    testWidgets('Transfer between accounts opens the transfer form', (tester) async {
+      await pump(tester, const AccountsScreen());
+
+      await tester.tap(find.text('Transfer between accounts'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New transfer'), findsOneWidget);
     });
   });
 

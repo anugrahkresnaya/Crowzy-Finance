@@ -22,6 +22,7 @@ class TransferTile extends StatelessWidget {
     required this.toName,
     this.onTap,
     this.showDate = true,
+    this.perspectiveAccountId,
   });
 
   final TransferModel transfer;
@@ -30,11 +31,23 @@ class TransferTile extends StatelessWidget {
   final VoidCallback? onTap;
   final bool showDate;
 
+  /// When the row is shown on one account's page, the transfer reads from
+  /// that account's side: "To DANA" with a minus when it left, "From BCA"
+  /// with a plus when it arrived.
+  final String? perspectiveAccountId;
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final note = transfer.note?.isNotEmpty == true ? transfer.note! : null;
-    final route = '$fromName → $toName';
+    final perspective = perspectiveAccountId;
+    final leaving = perspective != null && perspective == transfer.fromAccountId;
+    final arriving = perspective != null && perspective == transfer.toAccountId && !leaving;
+    final route = leaving
+        ? 'To $toName'
+        : arriving
+            ? 'From $fromName'
+            : '$fromName → $toName';
     final subtitle = [
       if (showDate) DateFormatter.relativeDay(transfer.date),
       route,
@@ -86,7 +99,7 @@ class TransferTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  CurrencyFormatter.number(transfer.amount),
+                  '${leaving ? '−' : arriving ? '+' : ''}${CurrencyFormatter.number(transfer.amount)}',
                   style: AppText.amount(context, color: AppColors.brass),
                 ),
               ],

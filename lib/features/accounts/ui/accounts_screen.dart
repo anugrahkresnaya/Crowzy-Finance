@@ -13,6 +13,7 @@ import '../../transactions/providers/transaction_provider.dart';
 import '../providers/account_provider.dart';
 import '../providers/balance_provider.dart';
 import '../utils/account_activity.dart';
+import 'account_detail_screen.dart';
 import 'account_form_screen.dart';
 import 'transfer_form_screen.dart';
 import 'widgets/account_row.dart';
@@ -30,7 +31,7 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   bool _showArchived = false;
 
   void _open(AccountModel account) {
-    pushSlide(context, AccountFormScreen(account: account));
+    pushSlide(context, AccountDetailScreen(accountId: account.id));
   }
 
   @override

@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_motion.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
-import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
@@ -19,6 +18,7 @@ import '../providers/activity_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../utils/activity_feed.dart';
 import '../utils/transaction_sort.dart';
+import 'widgets/activity_day_header.dart';
 import 'widgets/activity_row.dart';
 
 class TransactionListScreen extends ConsumerStatefulWidget {
@@ -321,7 +321,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
       itemCount: entries.length,
       itemBuilder: (context, i) {
         final item = entries[i];
-        if (item is ActivityDay) return _DayHeader(day: item, key: ValueKey(item.day));
+        if (item is ActivityDay) return ActivityDayHeader(day: item, key: ValueKey(item.day));
 
         final (:entry, :index) = item as ({ActivityEntry entry, int index});
         return Padding(
@@ -338,46 +338,6 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
           ).entrance(context, index: index, axis: Axis.horizontal),
         );
       },
-    );
-  }
-}
-
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({super.key, required this.day});
-
-  final ActivityDay day;
-
-  @override
-  Widget build(BuildContext context) {
-    final net = day.net;
-    final color = net > 0
-        ? AppColors.income
-        : net < 0
-            ? AppColors.expense
-            : AppColors.textMuted;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(2, 18, 2, 6),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.hairline)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Text(
-            DateFormatter.relativeDayLong(day.day).toUpperCase(),
-            style: AppText.eyebrow(context, color: AppColors.textMuted),
-          ),
-          // A day with only transfers has no income or expense to total.
-          if (day.hasTotal)
-            Text(
-              CurrencyFormatter.signed(net.abs(), income: net >= 0),
-              style: AppText.amount(context, size: 16, color: color),
-            ),
-        ],
-      ),
     );
   }
 }

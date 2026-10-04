@@ -22,6 +22,8 @@ class ActivityRow extends StatelessWidget {
     required this.defaultAccountId,
     this.showDate = true,
     this.showAccount = false,
+    this.showFeeRoute,
+    this.perspectiveAccountId,
   });
 
   final ActivityEntry entry;
@@ -40,6 +42,13 @@ class ActivityRow extends StatelessWidget {
   /// does not).
   final bool showAccount;
 
+  /// Whether a transfer fee's line names the transfer's route. Defaults to
+  /// [showAccount].
+  final bool? showFeeRoute;
+
+  /// Set on an account's page, so its transfers read from that account's side.
+  final String? perspectiveAccountId;
+
   String _name(String id) => accountNames[id] ?? 'Unknown account';
 
   @override
@@ -51,18 +60,19 @@ class ActivityRow extends StatelessWidget {
           fromName: _name(transfer.fromAccountId),
           toName: _name(transfer.toAccountId),
           showDate: showDate,
+          perspectiveAccountId: perspectiveAccountId,
           onTap: () => pushSlide(context, TransferReceiptScreen(transferId: transfer.id)),
         );
       case TransactionEntry(:final transaction):
         final fee = transaction.transferId == null ? null : transfersById[transaction.transferId];
         String? accountLabel;
-        if (showAccount) {
-          if (fee != null) {
+        if (fee != null) {
+          if (showFeeRoute ?? showAccount) {
             accountLabel = '${_name(fee.fromAccountId)} → ${_name(fee.toAccountId)}';
-          } else {
-            final id = transaction.accountId ?? defaultAccountId;
-            if (id != null) accountLabel = accountNames[id];
           }
+        } else if (showAccount) {
+          final id = transaction.accountId ?? defaultAccountId;
+          if (id != null) accountLabel = accountNames[id];
         }
         return TransactionTile(
           transaction: transaction,
