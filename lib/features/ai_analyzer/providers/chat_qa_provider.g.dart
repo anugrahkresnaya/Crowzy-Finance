@@ -87,7 +87,7 @@ final class ChatQaProvider extends $NotifierProvider<ChatQa, ChatQaState> {
   }
 }
 
-String _$chatQaHash() => r'6aa9ce4a8f2e4f73d68bf1d42d98043efb74d172';
+String _$chatQaHash() => r'b20d9c1937ff451944bfc768348e137e74bf86e5';
 
 abstract class _$ChatQa extends $Notifier<ChatQaState> {
   ChatQaState build();

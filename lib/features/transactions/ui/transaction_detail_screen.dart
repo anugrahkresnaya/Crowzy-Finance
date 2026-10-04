@@ -13,6 +13,7 @@ import '../../../data/models/category_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
 import '../../accounts/providers/account_provider.dart';
+import '../../accounts/ui/transfer_receipt_screen.dart';
 import '../../categories/providers/category_provider.dart';
 import '../providers/transaction_provider.dart';
 import 'add_edit_transaction_screen.dart';
@@ -43,6 +44,11 @@ class TransactionDetailScreen extends ConsumerWidget {
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final transaction = transactions.firstWhereOrNull((t) => t.id == transactionId);
     final category = categories.firstWhereOrNull((c) => c.id == transaction?.categoryId);
+
+    // A transfer's fee belongs to its transfer and is only changed through it.
+    final transferId = transaction?.transferId;
+    if (transferId != null) return TransferReceiptScreen(transferId: transferId);
+
     final accounts = ref.watch(accountListProvider).value ?? const [];
     final accountId = transaction?.accountId ?? ref.watch(defaultAccountIdProvider);
     final accountName = accounts.firstWhereOrNull((a) => a.id == accountId)?.name;

@@ -62,12 +62,45 @@ class TransferRepository {
     }
   }
 
+  /// Brings every transfer's fee expense back in line with the transfer: a
+  /// fee that is missing, stale (amount, account, date or category changed) or
+  /// left over after the transfer was deleted or its fee removed. This heals a
+  /// write that was cut short between the transfer and its fee. Returns whether
+  /// anything changed.
+  Future<bool> reconcileFees({DateTime? now}) async {
+    final at = now ?? DateTime.now();
+    var changed = false;
+
+    for (final raw in _box.values.toList()) {
+      final transfer = TransferModel.fromJson(Map<String, dynamic>.from(raw));
+      final fee = _transactions.findIncludingDeleted(feeIdFor(transfer.id));
+      final wanted = !transfer.isDeleted && transfer.fee > 0;
+
+      if (wanted) {
+        final inLine = fee != null &&
+            !fee.isDeleted &&
+            fee.amount == transfer.fee &&
+            fee.accountId == transfer.fromAccountId &&
+            fee.categoryId == DefaultCategories.feesId &&
+            fee.date == transfer.date;
+        if (!inLine) {
+          await _syncFee(transfer, at: at);
+          changed = true;
+        }
+      } else if (fee != null && !fee.isDeleted) {
+        await _transactions.save(fee.copyWith(isDeleted: true, updatedAt: at, isSynced: false));
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
   Future<void> _write(TransferModel transfer) async {
     await _box.put(transfer.id, transfer.toJson());
     await _syncFee(transfer);
   }
 
-  Future<void> _syncFee(TransferModel transfer) async {
+  Future<void> _syncFee(TransferModel transfer, {DateTime? at}) async {
     final feeId = feeIdFor(transfer.id);
     final existing = _transactions.findIncludingDeleted(feeId);
 
@@ -84,13 +117,13 @@ class TransferRepository {
           transferId: transfer.id,
           date: transfer.date,
           createdAt: existing?.createdAt ?? transfer.updatedAt,
-          updatedAt: transfer.updatedAt,
+          updatedAt: at ?? transfer.updatedAt,
           isSynced: false,
         ),
       );
     } else if (existing != null && !existing.isDeleted) {
       await _transactions.save(
-        existing.copyWith(isDeleted: true, updatedAt: transfer.updatedAt, isSynced: false),
+        existing.copyWith(isDeleted: true, updatedAt: at ?? transfer.updatedAt, isSynced: false),
       );
     }
   }

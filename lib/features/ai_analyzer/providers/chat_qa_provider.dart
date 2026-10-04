@@ -116,7 +116,10 @@ class ChatQa extends _$ChatQa {
       }
       if (!intent.isCorrection) return const CorrectionOutcome.notCorrection();
 
-      final transactions = ref.read(transactionListProvider).value ?? const [];
+      // A transfer's fee is changed through its transfer, not by a correction.
+      final transactions = (ref.read(transactionListProvider).value ?? const [])
+          .where((t) => t.transferId == null)
+          .toList();
       final categories = ref.read(categoryListProvider).value ?? const [];
       final candidates = matchCorrectionCandidates(
         intent: intent,

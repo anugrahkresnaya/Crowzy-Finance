@@ -44,7 +44,10 @@ TransferRepository transferRepository(Ref ref) {
 class TransferList extends _$TransferList {
   @override
   Future<List<TransferModel>> build() async {
-    return ref.watch(transferRepositoryProvider).getAll();
+    final repository = ref.watch(transferRepositoryProvider);
+    // A fee expense that fell out of step with its transfer is put right here.
+    if (await repository.reconcileFees()) ref.invalidate(transactionListProvider);
+    return repository.getAll();
   }
 
   Future<void> addTransfer({

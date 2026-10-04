@@ -176,7 +176,7 @@ final class TransferListProvider
   TransferList create() => TransferList();
 }
 
-String _$transferListHash() => r'32ce80f7872b20a0b16bce13791e06d038c2cadd';
+String _$transferListHash() => r'ca800547e9f3b7174d8e0c31f50ec3bb2f3c59f3';
 
 abstract class _$TransferList extends $AsyncNotifier<List<TransferModel>> {
   FutureOr<List<TransferModel>> build();

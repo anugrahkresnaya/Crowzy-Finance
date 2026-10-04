@@ -160,6 +160,65 @@ void main() {
     });
   });
 
+  group('reconcileFees', () {
+    Future<void> storeTransferOnly(TransferModel t) => transferBox.put(t.id, t.toJson());
+
+    test('restores a fee that is missing, as after a write cut short', () async {
+      await storeTransferOnly(transfer());
+
+      final changed = await repository.reconcileFees(now: DateTime.utc(2026, 10, 4));
+
+      expect(changed, isTrue);
+      final fee = transactions.getAll().single;
+      expect(fee.amount, 2500);
+      expect(fee.transferId, 't1');
+      expect(fee.isSynced, isFalse);
+      expect(fee.updatedAt, DateTime.utc(2026, 10, 4));
+    });
+
+    test('corrects a fee that no longer matches its transfer', () async {
+      await repository.create(transfer());
+      final fee = transactions.getAll().single;
+      await transactionBox.put(
+        fee.id,
+        fee.copyWith(amount: 99, accountId: 'dana', categoryId: 'food').toJson(),
+      );
+
+      final changed = await repository.reconcileFees();
+
+      expect(changed, isTrue);
+      final fixed = transactions.getAll().single;
+      expect(fixed.amount, 2500);
+      expect(fixed.accountId, 'bca');
+      expect(fixed.categoryId, DefaultCategories.feesId);
+    });
+
+    test('removes a fee left behind by a deleted transfer or a removed fee', () async {
+      await repository.create(transfer());
+      final fee = transactions.getAll().single;
+      await storeTransferOnly(transfer(fee: 0)); // the fee was removed, the expense was not
+
+      expect(await repository.reconcileFees(), isTrue);
+      expect(transactions.getAll(), isEmpty);
+      expect(transactionBox.get(fee.id), isNotNull);
+    });
+
+    test('does nothing, and reports nothing, when everything already agrees', () async {
+      await repository.create(transfer());
+      await repository.create(transfer(id: 't2', fee: 0));
+      final before = Map<String, dynamic>.from(transactionBox.get(TransferRepository.feeIdFor('t1'))!);
+
+      final changed = await repository.reconcileFees(now: DateTime.utc(2030));
+
+      expect(changed, isFalse);
+      expect(Map<String, dynamic>.from(transactionBox.get(TransferRepository.feeIdFor('t1'))!), before);
+    });
+
+    test('with no transfers there is nothing to do', () async {
+      expect(await repository.reconcileFees(), isFalse);
+    });
+  });
+
   test('getAll lists newest first and leaves out deleted transfers', () async {
     await repository.create(transfer(id: 'old', date: DateTime.utc(2026, 9, 1), fee: 0));
     await repository.create(transfer(id: 'new', date: DateTime.utc(2026, 10, 1), fee: 0));

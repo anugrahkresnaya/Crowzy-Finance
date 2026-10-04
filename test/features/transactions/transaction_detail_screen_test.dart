@@ -174,6 +174,29 @@ void main() {
     expect(find.text('ACCOUNT'), findsNothing);
   });
 
+  testWidgets('a transfer fee opens its transfer receipt instead, since it is changed through the transfer', (tester) async {
+    _transactions = [
+      TransactionModel(
+        id: 't1',
+        userId: 'u1',
+        amount: 2500,
+        type: TransactionType.expense,
+        categoryId: 'food',
+        note: 'Transfer fee',
+        accountId: 'bca',
+        transferId: 'tr1',
+        date: DateTime(2026, 10, 3),
+        createdAt: DateTime(2026, 10, 3),
+        updatedAt: DateTime(2026, 10, 3),
+      ),
+    ];
+    await pump(tester);
+
+    expect(find.text('TRANSACTION RECEIPT'), findsNothing);
+    expect(find.text('Edit'), findsNothing);
+    expect(find.text('This transfer no longer exists'), findsOneWidget); // none in this fake
+  });
+
   testWidgets('without a note the category is the headline', (tester) async {
     _transactions = [_tx(note: null)];
     await pump(tester);
