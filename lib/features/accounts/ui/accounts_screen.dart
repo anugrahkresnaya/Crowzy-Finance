@@ -14,6 +14,7 @@ import '../providers/account_provider.dart';
 import '../providers/balance_provider.dart';
 import '../utils/account_activity.dart';
 import 'account_form_screen.dart';
+import 'transfer_form_screen.dart';
 import 'widgets/account_row.dart';
 
 /// Where the user's money is held: the total across accounts, then each
@@ -95,6 +96,13 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                     ),
                     const SizedBox(height: 10),
                     BalanceAmount(balance: total, size: 44),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                      onPressed: () => pushSlide(context, const TransferFormScreen()),
+                      icon: const Icon(Icons.swap_vert_rounded, size: 18),
+                      label: const Text('Transfer between accounts'),
+                    ),
                   ],
                 ),
               ),

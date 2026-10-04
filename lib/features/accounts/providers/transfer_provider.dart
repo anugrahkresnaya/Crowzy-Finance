@@ -13,6 +13,25 @@ part 'transfer_provider.g.dart';
 @riverpod
 Box<Map> transfersBox(Ref ref) => Hive.box<Map>(HiveConstants.transfersBox);
 
+/// Remembers which account the user last sent money from, so the next transfer
+/// can start there.
+class LastTransferSource {
+  LastTransferSource(this._box);
+
+  static const _key = 'last_transfer_from';
+
+  final Box _box;
+
+  String? get value => _box.get(_key) as String?;
+
+  Future<void> save(String accountId) => _box.put(_key, accountId);
+}
+
+@riverpod
+LastTransferSource lastTransferSource(Ref ref) {
+  return LastTransferSource(ref.watch(syncMetaBoxProvider));
+}
+
 @riverpod
 TransferRepository transferRepository(Ref ref) {
   return TransferRepository(

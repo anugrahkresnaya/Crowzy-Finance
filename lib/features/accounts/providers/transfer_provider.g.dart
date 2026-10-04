@@ -56,6 +56,54 @@ final class TransfersBoxProvider
 
 String _$transfersBoxHash() => r'ffe2b92fa44a5684621ae5fa8c3a5cb8e0139aa7';
 
+@ProviderFor(lastTransferSource)
+final lastTransferSourceProvider = LastTransferSourceProvider._();
+
+final class LastTransferSourceProvider
+    extends
+        $FunctionalProvider<
+          LastTransferSource,
+          LastTransferSource,
+          LastTransferSource
+        >
+    with $Provider<LastTransferSource> {
+  LastTransferSourceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'lastTransferSourceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$lastTransferSourceHash();
+
+  @$internal
+  @override
+  $ProviderElement<LastTransferSource> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LastTransferSource create(Ref ref) {
+    return lastTransferSource(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LastTransferSource value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LastTransferSource>(value),
+    );
+  }
+}
+
+String _$lastTransferSourceHash() =>
+    r'2bdba0602f84e368e6ee2a3ce8f0af0b8ee9bf31';
+
 @ProviderFor(transferRepository)
 final transferRepositoryProvider = TransferRepositoryProvider._();
 
