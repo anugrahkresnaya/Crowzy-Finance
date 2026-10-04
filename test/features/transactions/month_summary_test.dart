@@ -80,4 +80,14 @@ void main() {
       isNull,
     );
   });
+
+  test('an opening balance counts towards the balance the month started with', () {
+    final transactions = [tx(DateTime(2026, 10, 3), 100, TransactionType.income)];
+
+    expect(summarizeMonth(transactions, october).changePercent, isNull);
+
+    final withOpening = summarizeMonth(transactions, october, openingBalance: 1000);
+    expect(withOpening.changePercent, closeTo(10, 0.0001));
+    expect(withOpening.income, 100);
+  });
 }

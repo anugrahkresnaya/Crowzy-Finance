@@ -5,6 +5,8 @@ import 'package:uuid/uuid.dart';
 import '../../../core/constants/hive_constants.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
+import '../../accounts/providers/account_provider.dart';
+import '../../accounts/utils/account_balance.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../repository/transaction_repository.dart';
 import '../utils/month_summary.dart';
@@ -99,24 +101,23 @@ List<TransactionModel> recentTransactions(Ref ref) {
   return transactions.take(5).toList();
 }
 
+/// Everything held across all accounts: opening balances plus every
+/// transaction. Transfers only move money between accounts, so they leave it
+/// unchanged (a transfer's fee is a transaction and does).
 @riverpod
 double allTimeBalance(Ref ref) {
   final transactions = ref.watch(transactionListProvider).value ?? const [];
-  return _netOf(transactions);
+  final accounts = ref.watch(accountListProvider).value ?? const [];
+  return totalBalance(accounts: accounts, transactions: transactions);
 }
 
 @riverpod
 MonthSummary thisMonthSummary(Ref ref) {
   final transactions = ref.watch(transactionListProvider).value ?? const [];
-  return summarizeMonth(transactions, DateTime.now());
-}
-
-double _netOf(Iterable<TransactionModel> transactions) {
-  var net = 0.0;
-  for (final transaction in transactions) {
-    net += transaction.type == TransactionType.income
-        ? transaction.amount
-        : -transaction.amount;
-  }
-  return net;
+  final accounts = ref.watch(accountListProvider).value ?? const [];
+  return summarizeMonth(
+    transactions,
+    DateTime.now(),
+    openingBalance: openingTotal(accounts),
+  );
 }

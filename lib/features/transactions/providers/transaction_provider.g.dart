@@ -321,12 +321,23 @@ final class RecentTransactionsProvider
 String _$recentTransactionsHash() =>
     r'2832a694e5071ee392e1a19f85b1ee6381911512';
 
+/// Everything held across all accounts: opening balances plus every
+/// transaction. Transfers only move money between accounts, so they leave it
+/// unchanged (a transfer's fee is a transaction and does).
+
 @ProviderFor(allTimeBalance)
 final allTimeBalanceProvider = AllTimeBalanceProvider._();
+
+/// Everything held across all accounts: opening balances plus every
+/// transaction. Transfers only move money between accounts, so they leave it
+/// unchanged (a transfer's fee is a transaction and does).
 
 final class AllTimeBalanceProvider
     extends $FunctionalProvider<double, double, double>
     with $Provider<double> {
+  /// Everything held across all accounts: opening balances plus every
+  /// transaction. Transfers only move money between accounts, so they leave it
+  /// unchanged (a transfer's fee is a transaction and does).
   AllTimeBalanceProvider._()
     : super(
         from: null,
@@ -360,7 +371,7 @@ final class AllTimeBalanceProvider
   }
 }
 
-String _$allTimeBalanceHash() => r'30e3b8595fc9396e503468ec211355cec5c4793a';
+String _$allTimeBalanceHash() => r'f004130eea089fdcaf306aede960a032fbf008c8';
 
 @ProviderFor(thisMonthSummary)
 final thisMonthSummaryProvider = ThisMonthSummaryProvider._();
@@ -401,4 +412,4 @@ final class ThisMonthSummaryProvider
   }
 }
 
-String _$thisMonthSummaryHash() => r'a54a3f1030a29c605b9f13be9a2a3ac698dc6529';
+String _$thisMonthSummaryHash() => r'23ae316bc8115c5fc64bbcdc3db7f00cb0a2a7b4';

@@ -21,11 +21,17 @@ class MonthSummary {
   double get net => income - expense;
 }
 
-MonthSummary summarizeMonth(Iterable<TransactionModel> all, DateTime month) {
+/// [openingBalance] is what the accounts held before any transaction, so the
+/// month's change is measured against the true starting balance.
+MonthSummary summarizeMonth(
+  Iterable<TransactionModel> all,
+  DateTime month, {
+  double openingBalance = 0,
+}) {
   final start = DateFormatter.startOfMonth(month);
   var income = 0.0;
   var expense = 0.0;
-  var startingBalance = 0.0;
+  var startingBalance = openingBalance;
 
   for (final transaction in all) {
     final signed = transaction.type == TransactionType.income
