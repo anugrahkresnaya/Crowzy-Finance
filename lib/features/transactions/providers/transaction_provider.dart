@@ -14,6 +14,7 @@ import '../utils/month_summary.dart';
 part 'transaction_provider.g.dart';
 
 const _lastUsedCategoryKeyPrefix = 'last_used_category_';
+const _lastUsedAccountKey = 'last_used_account';
 
 @riverpod
 Box<Map> transactionBox(Ref ref) => Hive.box<Map>(HiveConstants.transactionsBox);
@@ -39,12 +40,16 @@ class TransactionList extends _$TransactionList {
     required String categoryId,
     required DateTime date,
     String? note,
+    String? accountId,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(transactionRepositoryProvider);
       final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) throw StateError('No authenticated user');
+
+      // No account given (the AI flow, for one) means the default Cash account.
+      final account = accountId ?? ref.read(defaultAccountIdProvider);
 
       final now = DateTime.now();
       await repository.save(
@@ -55,6 +60,7 @@ class TransactionList extends _$TransactionList {
           type: type,
           categoryId: categoryId,
           note: note,
+          accountId: account,
           date: date,
           createdAt: now,
           updatedAt: now,
@@ -64,6 +70,7 @@ class TransactionList extends _$TransactionList {
       await ref
           .read(syncMetaBoxProvider)
           .put('$_lastUsedCategoryKeyPrefix${type.name}', categoryId);
+      if (account != null) await ref.read(syncMetaBoxProvider).put(_lastUsedAccountKey, account);
       return repository.getAll();
     });
   }
@@ -87,6 +94,12 @@ class TransactionList extends _$TransactionList {
       return repository.getAll();
     });
   }
+}
+
+/// The account the last transaction was added to, so the next one starts there.
+@riverpod
+String? lastUsedAccountId(Ref ref) {
+  return ref.watch(syncMetaBoxProvider).get(_lastUsedAccountKey) as String?;
 }
 
 @riverpod

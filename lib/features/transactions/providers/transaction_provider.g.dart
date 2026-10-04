@@ -169,7 +169,7 @@ final class TransactionListProvider
   TransactionList create() => TransactionList();
 }
 
-String _$transactionListHash() => r'1a82fa459adfee7153e2990763542e63f28895d0';
+String _$transactionListHash() => r'dd416e2b4a0ef84a4abfd44a342f0874f3150472';
 
 abstract class _$TransactionList
     extends $AsyncNotifier<List<TransactionModel>> {
@@ -194,6 +194,52 @@ abstract class _$TransactionList
     element.handleCreate(ref, build);
   }
 }
+
+/// The account the last transaction was added to, so the next one starts there.
+
+@ProviderFor(lastUsedAccountId)
+final lastUsedAccountIdProvider = LastUsedAccountIdProvider._();
+
+/// The account the last transaction was added to, so the next one starts there.
+
+final class LastUsedAccountIdProvider
+    extends $FunctionalProvider<String?, String?, String?>
+    with $Provider<String?> {
+  /// The account the last transaction was added to, so the next one starts there.
+  LastUsedAccountIdProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'lastUsedAccountIdProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$lastUsedAccountIdHash();
+
+  @$internal
+  @override
+  $ProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  String? create(Ref ref) {
+    return lastUsedAccountId(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
+String _$lastUsedAccountIdHash() => r'd8313e005234bb809172a872ec58121dd32ae489';
 
 @ProviderFor(lastUsedCategoryId)
 final lastUsedCategoryIdProvider = LastUsedCategoryIdFamily._();

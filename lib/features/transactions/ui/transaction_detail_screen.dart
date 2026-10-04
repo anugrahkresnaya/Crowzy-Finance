@@ -12,6 +12,7 @@ import '../../../core/widgets/receipt_slip.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
+import '../../accounts/providers/account_provider.dart';
 import '../../categories/providers/category_provider.dart';
 import '../providers/transaction_provider.dart';
 import 'add_edit_transaction_screen.dart';
@@ -42,6 +43,9 @@ class TransactionDetailScreen extends ConsumerWidget {
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final transaction = transactions.firstWhereOrNull((t) => t.id == transactionId);
     final category = categories.firstWhereOrNull((c) => c.id == transaction?.categoryId);
+    final accounts = ref.watch(accountListProvider).value ?? const [];
+    final accountId = transaction?.accountId ?? ref.watch(defaultAccountIdProvider);
+    final accountName = accounts.firstWhereOrNull((a) => a.id == accountId)?.name;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Transaction')),
@@ -54,7 +58,11 @@ class TransactionDetailScreen extends ConsumerWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(27, 8, 27, 24),
                 children: [
-                  _Receipt(transaction: transaction, category: category),
+                  _Receipt(
+                    transaction: transaction,
+                    category: category,
+                    accountName: accountName,
+                  ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
@@ -89,10 +97,17 @@ class TransactionDetailScreen extends ConsumerWidget {
 }
 
 class _Receipt extends StatelessWidget {
-  const _Receipt({required this.transaction, required this.category});
+  const _Receipt({
+    required this.transaction,
+    required this.category,
+    required this.accountName,
+  });
 
   final TransactionModel transaction;
   final CategoryModel? category;
+
+  /// Where the transaction was recorded; the row is left out when unknown.
+  final String? accountName;
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +161,7 @@ class _Receipt extends StatelessWidget {
         ),
         const ReceiptDivider(),
         ReceiptRow(label: 'Category', value: categoryName),
+        if (accountName != null) ReceiptRow(label: 'Account', value: accountName!),
         ReceiptRow(label: 'Date', value: DateFormatter.receiptDate(transaction.date)),
         ReceiptRow(
           label: 'Status',

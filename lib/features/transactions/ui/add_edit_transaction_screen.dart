@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/default_categories.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
 import '../../../core/utils/amount_input.dart';
@@ -11,9 +12,13 @@ import '../../../core/utils/icon_mapper.dart';
 import '../../../core/widgets/amount_field.dart';
 import '../../../core/widgets/form_card.dart';
 import '../../../core/widgets/press_scale.dart';
+import '../../../data/models/account_model.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
+import '../../accounts/providers/account_provider.dart';
+import '../../accounts/providers/balance_provider.dart';
+import '../../accounts/ui/widgets/account_picker_sheet.dart';
 import '../../ai_analyzer/ui/ai_analyzer_screen.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../categories/ui/add_edit_category_screen.dart';
@@ -24,12 +29,16 @@ class AddEditTransactionScreen extends ConsumerStatefulWidget {
     super.key,
     this.transaction,
     this.initialType = TransactionType.expense,
+    this.initialAccountId,
   });
 
   final TransactionModel? transaction;
 
   /// Which side is chosen when adding a new transaction.
   final TransactionType initialType;
+
+  /// The account chosen when adding a new transaction, e.g. from that account's page.
+  final String? initialAccountId;
 
   @override
   ConsumerState<AddEditTransactionScreen> createState() =>
@@ -47,6 +56,8 @@ class _AddEditTransactionScreenState
   late TransactionType _type = widget.transaction?.type ?? widget.initialType;
   late DateTime _date = widget.transaction?.date ?? DateTime.now();
   late String? _categoryId = widget.transaction?.categoryId;
+  late String? _accountId = widget.transaction?.accountId ?? widget.initialAccountId;
+  bool _accountInitialized = false;
   bool _categoryInitialized = false;
 
   bool get _isEditing => widget.transaction != null;
@@ -68,6 +79,18 @@ class _AddEditTransactionScreenState
     if (picked != null) setState(() => _date = picked);
   }
 
+  Future<void> _pickAccount(List<AccountModel> accounts, List<AccountModel> active) async {
+    // An archived account stays pickable while editing a transaction on it.
+    final current = accounts.where((a) => a.id == _accountId && a.isArchived);
+    final chosen = await showAccountPickerSheet(
+      context,
+      accounts: [...active, ...current],
+      balances: ref.read(accountBalanceMapProvider),
+      selectedId: _accountId,
+    );
+    if (chosen != null) setState(() => _accountId = chosen.id);
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _categoryId == null) return;
 
@@ -83,6 +106,7 @@ class _AddEditTransactionScreenState
         categoryId: _categoryId!,
         date: _date,
         note: note.isEmpty ? null : note,
+        accountId: _accountId,
       );
     } else {
       await notifier.updateTransaction(
@@ -92,6 +116,7 @@ class _AddEditTransactionScreenState
           categoryId: _categoryId!,
           date: _date,
           note: note.isEmpty ? null : note,
+          accountId: _accountId,
         ),
       );
     }
@@ -110,9 +135,12 @@ class _AddEditTransactionScreenState
       );
     });
 
-    final categories = _type == TransactionType.income
-        ? ref.watch(incomeCategoriesProvider)
-        : ref.watch(expenseCategoriesProvider);
+    // Fees are only ever recorded by a transfer, so they are not offered here.
+    final categories = (_type == TransactionType.income
+            ? ref.watch(incomeCategoriesProvider)
+            : ref.watch(expenseCategoriesProvider))
+        .where((c) => c.id != DefaultCategories.feesId)
+        .toList();
 
     // Wait for the categories before choosing one: while they are still
     // loading the list is empty, and acting on it would wipe the selection.
@@ -126,6 +154,25 @@ class _AddEditTransactionScreenState
         _categoryId = categories.first.id;
       }
     }
+
+    final accounts = ref.watch(accountListProvider).value ?? const <AccountModel>[];
+    final active = accounts.where((a) => !a.isArchived).toList();
+
+    // As with the category, wait for the accounts before choosing one. A new
+    // transaction starts on the account last used, else the default Cash one.
+    if (accounts.isNotEmpty && !_accountInitialized) {
+      _accountInitialized = true;
+      final defaultId = ref.read(defaultAccountIdProvider);
+      if (_accountId == null || !accounts.any((a) => a.id == _accountId)) {
+        final lastUsed = ref.read(lastUsedAccountIdProvider);
+        _accountId = _isEditing
+            ? defaultId
+            : active.any((a) => a.id == lastUsed)
+                ? lastUsed
+                : (active.any((a) => a.id == defaultId) ? defaultId : active.firstOrNull?.id);
+      }
+    }
+    final account = accounts.where((a) => a.id == _accountId).firstOrNull;
 
     final isLoading = ref.watch(transactionListProvider).isLoading;
     return Scaffold(
@@ -169,6 +216,14 @@ class _AddEditTransactionScreenState
               const SizedBox(height: 22),
               FormCard(
                 rows: [
+                  FormCardRow.value(
+                    label: 'Account',
+                    value: account?.name ?? '—',
+                    showChevron: true,
+                    onTap: isLoading || accounts.isEmpty
+                        ? null
+                        : () => _pickAccount(accounts, active),
+                  ),
                   FormCardRow.value(
                     label: 'Date',
                     value: DateFormatter.relativeDayWithDate(_date),
