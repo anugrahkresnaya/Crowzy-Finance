@@ -128,7 +128,7 @@ final class CategoryListProvider
   CategoryList create() => CategoryList();
 }
 
-String _$categoryListHash() => r'8c3ad1b70c3a4bf5400c9e1887b39b954b9c8503';
+String _$categoryListHash() => r'9c627f7b6ff73a8c4977d76e1b3cd7098c1397ac';
 
 abstract class _$CategoryList extends $AsyncNotifier<List<CategoryModel>> {
   FutureOr<List<CategoryModel>> build();

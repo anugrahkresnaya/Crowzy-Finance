@@ -33,7 +33,8 @@ class CategoryList extends _$CategoryList {
   Future<List<CategoryModel>> build() async {
     final repository = ref.watch(categoryRepositoryProvider);
     var categories = repository.getAll();
-    final missing = DefaultCategories.missingFrom(categories.map((c) => c.id));
+    // Judged against every stored row, so a default that was deleted stays deleted.
+    final missing = DefaultCategories.missingFrom(repository.allIds());
     if (missing.isNotEmpty) {
       for (final category in missing) {
         await repository.save(category);

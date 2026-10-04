@@ -41,6 +41,20 @@ void main() {
     expect(categories.where((c) => c.id == DefaultCategories.feesId), hasLength(1));
   });
 
+  test('a default that was deleted stays deleted instead of coming back', () async {
+    final all = DefaultCategories.build();
+    for (final category in all) {
+      await box.put(category.id, category.toJson());
+    }
+    final gone = all.first.copyWith(isDeleted: true, isSynced: false);
+    await box.put(gone.id, gone.toJson());
+
+    final categories = await container().read(categoryListProvider.future);
+
+    expect(categories.any((c) => c.id == gone.id), isFalse);
+    expect(Map<String, dynamic>.from(box.get(gone.id)!)['is_deleted'], isTrue);
+  });
+
   test('running it again adds nothing more', () async {
     await container().read(categoryListProvider.future);
     final after = box.length;
