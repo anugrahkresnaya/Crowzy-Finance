@@ -9,6 +9,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/icon_mapper.dart';
 import '../../../core/widgets/amount_field.dart';
+import '../../../core/widgets/form_card.dart';
 import '../../../core/widgets/press_scale.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/transaction_model.dart';
@@ -19,9 +20,16 @@ import '../../categories/ui/add_edit_category_screen.dart';
 import '../providers/transaction_provider.dart';
 
 class AddEditTransactionScreen extends ConsumerStatefulWidget {
-  const AddEditTransactionScreen({super.key, this.transaction});
+  const AddEditTransactionScreen({
+    super.key,
+    this.transaction,
+    this.initialType = TransactionType.expense,
+  });
 
   final TransactionModel? transaction;
+
+  /// Which side is chosen when adding a new transaction.
+  final TransactionType initialType;
 
   @override
   ConsumerState<AddEditTransactionScreen> createState() =>
@@ -36,7 +44,7 @@ class _AddEditTransactionScreenState
   );
   late final _noteController = TextEditingController(text: widget.transaction?.note);
 
-  late TransactionType _type = widget.transaction?.type ?? TransactionType.expense;
+  late TransactionType _type = widget.transaction?.type ?? widget.initialType;
   late DateTime _date = widget.transaction?.date ?? DateTime.now();
   late String? _categoryId = widget.transaction?.categoryId;
   bool _categoryInitialized = false;
@@ -120,8 +128,6 @@ class _AddEditTransactionScreenState
     }
 
     final isLoading = ref.watch(transactionListProvider).isLoading;
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit transaction' : 'New transaction'),
@@ -161,68 +167,20 @@ class _AddEditTransactionScreenState
                 onAdd: () => pushSlide(context, AddEditCategoryScreen(initialType: _type)),
               ),
               const SizedBox(height: 22),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.hairlineSoft),
-                ),
-                child: Column(
-                  children: [
-                    InkWell(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                      onTap: isLoading ? null : _pickDate,
-                      child: Container(
-                        constraints: const BoxConstraints(minHeight: 56),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: const BoxDecoration(
-                          border: Border(bottom: BorderSide(color: AppColors.divider)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Date',
-                              style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
-                            ),
-                            Text(DateFormatter.relativeDayWithDate(_date), style: textTheme.bodyLarge),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Container(
-                      constraints: const BoxConstraints(minHeight: 56),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Note',
-                            style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextField(
-                              controller: _noteController,
-                              enabled: !isLoading,
-                              textAlign: TextAlign.end,
-                              style: textTheme.bodyLarge,
-                              decoration: InputDecoration(
-                                hintText: 'Optional',
-                                hintStyle: textTheme.bodyLarge?.copyWith(color: AppColors.textFaint),
-                                filled: false,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                disabledBorder: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              FormCard(
+                rows: [
+                  FormCardRow.value(
+                    label: 'Date',
+                    value: DateFormatter.relativeDayWithDate(_date),
+                    onTap: isLoading ? null : _pickDate,
+                  ),
+                  FormCardRow.field(
+                    label: 'Note',
+                    controller: _noteController,
+                    hint: 'Optional',
+                    enabled: !isLoading,
+                  ),
+                ],
               ),
               if (!_isEditing) ...[
                 const SizedBox(height: 14),
