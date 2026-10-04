@@ -22,6 +22,17 @@ The Supabase URL and publishable key are in
 `lib/core/constants/supabase_constants.dart`. To point at your own project,
 change them there.
 
+### Accounts and transfers
+
+Every income or expense belongs to an account (Bank, E-wallet or Cash). Each
+user gets a default Cash account, created on first use, and a transaction with
+no account counts as being on it, so older data needs no migration. A transfer
+moves money between two accounts; it is stored on its own, never as income or
+expense, so reports, budgets, alerts and the AI never see it. An optional fee is
+recorded as an ordinary expense (category Fees) linked to its transfer, which is
+the only part that counts as spending. The Home balance is the sum of all
+accounts, archived ones included.
+
 ### Look and feel
 
 The app is dark-only (bottle-green, ivory and brass). Titles and amounts use
@@ -66,8 +77,19 @@ Migrations live in `supabase/migrations/`:
 4. `20261003000100_budget_and_positive_alerts.sql` — adds the `budget_limit`,
    `income_received` and `goal_on_track` alert rules to `evaluate_alerts()`.
 
-**Deploy order:** ship the app update before running migrations 3 and 4. An
-older app build cannot parse the new alert types.
+5. `20261004000000_accounts_and_transfers.sql` — the `accounts` and
+   `transfers` tables (with RLS), `account_id` and `transfer_id` on
+   `transactions`, the default "Fees" category, and a change to
+   `evaluate_alerts()` so a transfer's fee never raises a category-spike alert.
+
+**Deploy order differs between the two groups:**
+
+- Migrations 3 and 4: ship the app update **before** running them. An older app
+  build cannot parse the new alert types.
+- Migration 5: run it **before** shipping the app update. The new app sends
+  `account_id` and `transfer_id` with every transaction, so the columns must
+  exist first. Older app builds are unaffected, since the columns are nullable
+  and an upsert that leaves them out keeps what is there.
 
 ```bash
 supabase link --project-ref <ref>
