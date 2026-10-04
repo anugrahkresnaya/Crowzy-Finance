@@ -8,6 +8,7 @@ import '../../data/models/category_model.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/models/transfer_model.dart';
 import '../../data/models/wishlist_model.dart';
+import '../../features/accounts/repository/account_repository.dart';
 
 class SyncStepFailure {
   const SyncStepFailure(this.step, this.error, this.stackTrace);
@@ -148,7 +149,18 @@ class SyncService {
         .toList();
     if (dirty.isEmpty) return;
 
-    await _client.from('accounts').upsert(dirty.map((b) => b.toSupabaseRow()).toList());
+    // A default account nobody has touched must not replace the real one,
+    // which another device may already have changed.
+    final untouched = dirty.where(AccountRepository.isPristine).toList();
+    final changed = dirty.where((a) => !AccountRepository.isPristine(a)).toList();
+    if (untouched.isNotEmpty) {
+      await _client
+          .from('accounts')
+          .upsert(untouched.map((a) => a.toSupabaseRow()).toList(), ignoreDuplicates: true);
+    }
+    if (changed.isNotEmpty) {
+      await _client.from('accounts').upsert(changed.map((a) => a.toSupabaseRow()).toList());
+    }
     for (final account in dirty) {
       await _accountBox.put(account.id, account.copyWith(isSynced: true).toJson());
     }

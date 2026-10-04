@@ -6,6 +6,7 @@ import '../../../core/constants/hive_constants.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
 import '../../accounts/providers/account_provider.dart';
+import '../../accounts/repository/account_repository.dart';
 import '../../accounts/utils/account_balance.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../repository/transaction_repository.dart';
@@ -50,6 +51,10 @@ class TransactionList extends _$TransactionList {
 
       // No account given (the AI flow, for one) means the default Cash account.
       final account = accountId ?? ref.read(defaultAccountIdProvider);
+      // The account row must exist locally to be pushed ahead of the transaction.
+      if (account == AccountRepository.defaultIdFor(userId)) {
+        await ref.read(accountRepositoryProvider).ensureDefault(userId);
+      }
 
       final now = DateTime.now();
       await repository.save(

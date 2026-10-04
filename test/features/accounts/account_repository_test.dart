@@ -44,7 +44,7 @@ void main() {
 
   group('ensureDefault', () {
     test('creates one unsynced Cash account for the user', () async {
-      final created = await repository.ensureDefault('u1', now: DateTime.utc(2026, 7, 2));
+      final created = await repository.ensureDefault('u1');
 
       expect(created.id, AccountRepository.defaultIdFor('u1'));
       expect(created.name, 'Cash');
@@ -52,6 +52,30 @@ void main() {
       expect(created.openingBalance, 0);
       expect(created.isSynced, isFalse);
       expect(repository.getAll(), hasLength(1));
+    });
+
+    test('is stamped with the epoch, so it counts as untouched and leads the list', () async {
+      final created = await repository.ensureDefault('u1');
+      await repository.save(AccountModel(
+        id: 'later',
+        userId: 'u1',
+        name: 'Later',
+        type: AccountType.bank,
+        createdAt: DateTime.utc(2026, 7, 1),
+        updatedAt: DateTime.utc(2026, 7, 1),
+      ));
+
+      expect(created.createdAt, AccountRepository.pristine);
+      expect(created.updatedAt, AccountRepository.pristine);
+      expect(AccountRepository.isPristine(created), isTrue);
+      expect(repository.getAll().first.id, created.id);
+    });
+
+    test('an edit to the default account makes it a real change', () async {
+      final created = await repository.ensureDefault('u1');
+      final edited = created.copyWith(openingBalance: 900000, updatedAt: DateTime.utc(2026, 7, 3));
+
+      expect(AccountRepository.isPristine(edited), isFalse);
     });
 
     test('does not replace an existing default, even after it was renamed', () async {

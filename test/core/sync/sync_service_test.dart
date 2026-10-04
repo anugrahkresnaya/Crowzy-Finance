@@ -412,6 +412,55 @@ void main() {
       expect(stored.isSynced, isTrue);
     });
 
+    test('an untouched default account is pushed so as not to overwrite the server one', () async {
+      await accounts.put(
+        'cash',
+        account('cash', name: 'Cash', isSynced: false, updatedAt: DateTime.utc(1970)).toJson(),
+      );
+
+      await service.sync(userId);
+
+      final request = posts('accounts').single;
+      expect(request.headers['Prefer'], contains('resolution=ignore-duplicates'));
+      expect(AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('cash')!)).isSynced, isTrue);
+    });
+
+    test('a changed account is pushed as an ordinary upsert that replaces the server row', () async {
+      await accounts.put('a1', account('a1', isSynced: false, opening: 5).toJson());
+
+      await service.sync(userId);
+
+      expect(posts('accounts').single.headers['Prefer'], contains('resolution=merge-duplicates'));
+    });
+
+    test('an untouched and a changed account in one sync make one request each', () async {
+      await accounts.put('cash', account('cash', isSynced: false, updatedAt: DateTime.utc(1970)).toJson());
+      await accounts.put('a1', account('a1', isSynced: false).toJson());
+
+      await service.sync(userId);
+
+      final preferences = posts('accounts').map((r) => r.headers['Prefer']).toList();
+      expect(preferences, hasLength(2));
+      expect(preferences.where((p) => p!.contains('ignore-duplicates')), hasLength(1));
+      expect(preferences.where((p) => p!.contains('merge-duplicates')), hasLength(1));
+    });
+
+    test('the server\'s version of the default account replaces the untouched local one', () async {
+      await accounts.put(
+        'cash',
+        account('cash', name: 'Cash', isSynced: false, updatedAt: DateTime.utc(1970)).toJson(),
+      );
+      remote['accounts'] = [
+        account('cash', name: 'Pocket cash', opening: 900000, updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
+      ];
+
+      await service.sync(userId);
+
+      final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('cash')!));
+      expect(stored.name, 'Pocket cash');
+      expect(stored.openingBalance, 900000);
+    });
+
     test('remote accounts are stored as synced, reading numeric strings too', () async {
       remote['accounts'] = [
         {...account('a1', updatedAt: DateTime.utc(2026, 7, 3)).toSupabaseRow(), 'opening_balance': '1850000.00'},
