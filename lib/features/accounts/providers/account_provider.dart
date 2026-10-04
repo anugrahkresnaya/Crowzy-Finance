@@ -22,16 +22,13 @@ AccountRepository accountRepository(Ref ref) {
 class AccountList extends _$AccountList {
   @override
   Future<List<AccountModel>> build() async {
-    final repository = ref.watch(accountRepositoryProvider);
-    final userId = ref.watch(currentUserProvider)?.id;
-    if (userId != null) await repository.ensureDefault(userId);
-    return repository.getAll();
+    return ref.watch(accountRepositoryProvider).getAll();
   }
 
   Future<void> addAccount({
     required String name,
     required AccountType type,
-    required double openingBalance,
+    required double initialBalance,
   }) async {
     state = await AsyncValue.guard(() async {
       final repository = ref.read(accountRepositoryProvider);
@@ -45,7 +42,7 @@ class AccountList extends _$AccountList {
           userId: userId,
           name: name,
           type: type,
-          openingBalance: openingBalance,
+          initialBalance: initialBalance,
           createdAt: now,
           updatedAt: now,
           isSynced: false,
@@ -64,10 +61,13 @@ class AccountList extends _$AccountList {
   }
 }
 
-/// The user's default Cash account id, which transactions without an account
-/// belong to. Null until someone is signed in.
+/// The account marked as main, which new transactions and transfers start on.
+/// Null when none is, or the main one is archived.
 @riverpod
-String? defaultAccountId(Ref ref) {
-  final userId = ref.watch(currentUserProvider)?.id;
-  return userId == null ? null : AccountRepository.defaultIdFor(userId);
+String? mainAccountId(Ref ref) {
+  final accounts = ref.watch(accountListProvider).value ?? const [];
+  for (final account in accounts) {
+    if (account.isMain && !account.isArchived) return account.id;
+  }
+  return null;
 }

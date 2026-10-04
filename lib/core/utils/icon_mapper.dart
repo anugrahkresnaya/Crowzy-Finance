@@ -17,6 +17,7 @@ class IconMapper {
     'school': Icons.school,
     'category': Icons.category,
     'payments': Icons.payments,
+    'swap_horiz': Icons.swap_horiz,
     'savings': Icons.savings,
     'home': Icons.home,
     'flight': Icons.flight,

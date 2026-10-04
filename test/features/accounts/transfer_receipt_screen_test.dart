@@ -3,7 +3,7 @@ import 'package:crowzy_finance/core/theme/app_theme.dart';
 import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
 import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/accounts/ui/transfer_receipt_screen.dart';
@@ -13,23 +13,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../support/transfers.dart';
+
 final _at = DateTime(2026, 10, 2);
 
-late List<TransferModel> _transfers;
+late List<Transfer> _transfers;
 late List<AccountModel> _accounts;
 final _deleted = <String>[];
+late ProviderContainer _container;
 
-class _FakeTransfers extends TransferList {
-  @override
-  Future<List<TransferModel>> build() async => _transfers;
-
-  @override
-  Future<void> deleteTransfer(String id) async {
-    _deleted.add(id);
-    _transfers = _transfers.where((t) => t.id != id).toList();
-    state = AsyncData(_transfers);
-  }
-}
+/// The transfers as the transactions they are stored as, plus any fees.
+List<TransactionModel> _stored() => [
+      for (final t in _transfers) ...[
+        ...legsOf(t),
+        if (t.fee > 0) feeOf(t, categoryId: 'food'),
+      ],
+    ];
 
 class _FakeAccounts extends AccountList {
   @override
@@ -38,7 +37,19 @@ class _FakeAccounts extends AccountList {
 
 class _FakeTransactions extends TransactionList {
   @override
-  Future<List<TransactionModel>> build() async => const [];
+  Future<List<TransactionModel>> build() async => _stored();
+}
+
+class _FakeActions implements TransferActions {
+  @override
+  Future<void> delete(Transfer transfer) async {
+    _deleted.add(transfer.id);
+    _transfers = _transfers.where((t) => t.id != transfer.id).toList();
+    _container.invalidate(transactionListProvider);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _Memory implements LastTransferSource {
@@ -58,24 +69,21 @@ AccountModel _account(String id, String name) => AccountModel(
       updatedAt: _at,
     );
 
-TransferModel _transfer({
+Transfer _transfer({
   double amount = 500000,
   double fee = 2500,
   String? note = 'Top up DANA',
   bool isSynced = true,
 }) =>
-    TransferModel(
-      id: 't1',
-      userId: 'u1',
-      fromAccountId: 'bca',
-      toAccountId: 'dana',
+    fakeTransfer(
+      't1',
+      from: 'bca',
+      to: 'dana',
       amount: amount,
       fee: fee,
       note: note,
-      date: DateTime(2026, 10, 2), // a Friday
-      createdAt: _at,
-      updatedAt: _at,
       isSynced: isSynced,
+      date: DateTime(2026, 10, 2), // a Friday
     );
 
 void main() {
@@ -94,10 +102,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          transferListProvider.overrideWith(_FakeTransfers.new),
+          transferActionsProvider.overrideWithValue(_FakeActions()),
           accountListProvider.overrideWith(_FakeAccounts.new),
           transactionListProvider.overrideWith(_FakeTransactions.new),
-          defaultAccountIdProvider.overrideWithValue('bca'),
+          mainAccountIdProvider.overrideWithValue(null),
           lastTransferSourceProvider.overrideWithValue(_Memory()),
         ],
         child: MaterialApp(
@@ -115,6 +123,7 @@ void main() {
         ),
       ),
     );
+    _container = ProviderScope.containerOf(tester.element(find.text('open')));
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
   }

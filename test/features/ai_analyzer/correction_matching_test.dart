@@ -36,13 +36,13 @@ class _FakeCategories extends CategoryList {
   Future<List<CategoryModel>> build() async => const [];
 }
 
-TransactionModel _tx(String id, {String? transferId}) => TransactionModel(
+TransactionModel _tx(String id, {String? transferGroupId}) => TransactionModel(
       id: id,
       userId: 'u',
       amount: 2500,
       type: TransactionType.expense,
       categoryId: 'food',
-      transferId: transferId,
+      transferGroupId: transferGroupId,
       date: DateTime(2026, 10, 2),
       createdAt: DateTime(2026, 10, 2),
       updatedAt: DateTime(2026, 10, 2),
@@ -68,14 +68,14 @@ void main() {
     expect(await classify(), isA<CorrectionSingle>());
   });
 
-  test('a transfer fee is never a candidate, since it is changed through its transfer', () async {
-    _transactions = [_tx('fee', transferId: 't1')];
+  test('a leg of a transfer is never a candidate, since it is not something a person spent', () async {
+    _transactions = [_tx('leg', transferGroupId: 't1')];
 
     expect(await classify(), isA<CorrectionNoMatch>());
   });
 
-  test('with a fee and an ordinary transaction only the ordinary one is offered', () async {
-    _transactions = [_tx('fee', transferId: 't1'), _tx('lunch')];
+  test('with a leg and an ordinary transaction only the ordinary one is offered', () async {
+    _transactions = [_tx('leg', transferGroupId: 't1'), _tx('lunch')];
 
     final outcome = await classify();
 

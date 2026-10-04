@@ -10,7 +10,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/receipt_slip.dart';
 import '../../../data/models/account_model.dart';
-import '../../../data/models/transfer_model.dart';
+import '../../../data/models/transfer.dart';
 import '../providers/account_provider.dart';
 import '../providers/transfer_provider.dart';
 import 'transfer_form_screen.dart';
@@ -31,13 +31,14 @@ class TransferReceiptScreen extends ConsumerWidget {
     );
     if (!confirmed) return;
 
-    await ref.read(transferListProvider.notifier).deleteTransfer(transferId);
+    final transfer = ref.read(transferListProvider).firstWhereOrNull((t) => t.id == transferId);
+    if (transfer != null) await ref.read(transferActionsProvider).delete(transfer);
     if (context.mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transfers = ref.watch(transferListProvider).value ?? const [];
+    final transfers = ref.watch(transferListProvider);
     final accounts = ref.watch(accountListProvider).value ?? const [];
     final transfer = transfers.firstWhereOrNull((t) => t.id == transferId);
 
@@ -89,10 +90,10 @@ class TransferReceiptScreen extends ConsumerWidget {
 class _Receipt extends StatelessWidget {
   const _Receipt({required this.transfer, required this.accounts});
 
-  final TransferModel transfer;
+  final Transfer transfer;
   final List<AccountModel> accounts;
 
-  String _name(String id) => accounts.firstWhereOrNull((a) => a.id == id)?.name ?? 'Unknown account';
+  String _name(String? id) => accounts.firstWhereOrNull((a) => a.id == id)?.name ?? 'Unknown account';
 
   @override
   Widget build(BuildContext context) {

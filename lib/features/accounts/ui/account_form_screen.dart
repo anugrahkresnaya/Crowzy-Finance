@@ -13,8 +13,8 @@ import '../providers/account_provider.dart';
 import '../providers/balance_provider.dart';
 
 /// Adds an account, or edits [account]. An empty form is a new account: its
-/// opening balance is what it holds right now. An existing account also offers
-/// to archive itself (except the default Cash account).
+/// initial balance is what it holds right now. An existing account also offers
+/// to archive itself.
 class AccountFormScreen extends ConsumerStatefulWidget {
   const AccountFormScreen({super.key, this.account});
 
@@ -28,9 +28,9 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final _nameController = TextEditingController(text: widget.account?.name);
   late final _balanceController = TextEditingController(
-    text: widget.account == null || widget.account!.openingBalance == 0
+    text: widget.account == null || widget.account!.initialBalance == 0
         ? ''
-        : CurrencyFormatter.number(widget.account!.openingBalance),
+        : CurrencyFormatter.number(widget.account!.initialBalance),
   );
 
   late AccountType _type = widget.account?.type ?? AccountType.bank;
@@ -54,13 +54,13 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     final existing = widget.account;
 
     if (existing == null) {
-      await notifier.addAccount(name: name, type: _type, openingBalance: opening);
+      await notifier.addAccount(name: name, type: _type, initialBalance: opening);
     } else {
       await notifier.updateAccount(
         existing.copyWith(
           name: name,
           type: _type,
-          openingBalance: opening,
+          initialBalance: opening,
           isArchived: _archived,
         ),
       );
@@ -80,7 +80,6 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     });
 
     final existing = widget.account;
-    final isDefault = existing != null && existing.id == ref.watch(defaultAccountIdProvider);
     final current = existing == null ? null : ref.watch(accountBalanceMapProvider)[existing.id];
     final textTheme = Theme.of(context).textTheme;
 
@@ -88,7 +87,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
         ? 'What this account holds right now. From here on its balance moves with every '
             'transaction and transfer.'
         : 'What this account held when you started tracking it. Its current balance, '
-            '${CurrencyFormatter.number(current ?? existing.openingBalance)}, is worked out '
+            '${CurrencyFormatter.number(current ?? existing.initialBalance)}, is worked out '
             'from this plus everything since.';
 
     return Scaffold(
@@ -135,7 +134,7 @@ class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                 balanceNote,
                 style: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted, height: 1.5),
               ),
-              if (_isEditing && !isDefault) ...[
+              if (_isEditing) ...[
                 const SizedBox(height: 22),
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),

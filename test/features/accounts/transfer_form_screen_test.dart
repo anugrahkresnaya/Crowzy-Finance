@@ -3,8 +3,7 @@ import 'package:crowzy_finance/core/theme/app_theme.dart';
 import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
-import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
 import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/accounts/ui/transfer_form_screen.dart';
@@ -13,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../support/transfers.dart';
 
 final _at = DateTime(2026, 10, 1);
 
@@ -23,7 +24,7 @@ AccountModel _account(String id, String name, AccountType type, double opening, 
       userId: 'u1',
       name: name,
       type: type,
-      openingBalance: opening,
+      initialBalance: opening,
       isArchived: archived,
       createdAt: _at.add(Duration(minutes: order)),
       updatedAt: _at,
@@ -31,9 +32,8 @@ AccountModel _account(String id, String name, AccountType type, double opening, 
 
 late List<AccountModel> _accounts;
 late List<TransactionModel> _transactions;
-late List<TransferModel> _transfers;
 final _added = <({String from, String to, double amount, double fee, String? note, DateTime date})>[];
-final _updated = <TransferModel>[];
+final _updated = <({Transfer transfer, String from, String to, double amount, double fee, String? note})>[];
 final _deleted = <String>[];
 
 class _FakeAccounts extends AccountList {
@@ -47,12 +47,9 @@ class _FakeTransactions extends TransactionList {
   Future<List<TransactionModel>> build() async => _transactions;
 }
 
-class _FakeTransfers extends TransferList {
+class _FakeActions implements TransferActions {
   @override
-  Future<List<TransferModel>> build() async => _transfers;
-
-  @override
-  Future<void> addTransfer({
+  Future<void> create({
     required String fromAccountId,
     required String toAccountId,
     required double amount,
@@ -64,10 +61,30 @@ class _FakeTransfers extends TransferList {
   }
 
   @override
-  Future<void> updateTransfer(TransferModel transfer) async => _updated.add(transfer);
+  Future<void> update(
+    Transfer transfer, {
+    required String fromAccountId,
+    required String toAccountId,
+    required double amount,
+    double fee = 0,
+    required DateTime date,
+    String? note,
+  }) async {
+    _updated.add((
+      transfer: transfer,
+      from: fromAccountId,
+      to: toAccountId,
+      amount: amount,
+      fee: fee,
+      note: note,
+    ));
+  }
 
   @override
-  Future<void> deleteTransfer(String id) async => _deleted.add(id);
+  Future<void> delete(Transfer transfer) async => _deleted.add(transfer.id);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _Memory implements LastTransferSource {
@@ -93,7 +110,6 @@ void main() {
       _account('cash', 'Cash', AccountType.cash, 900000, 0),
     ];
     _transactions = [];
-    _transfers = [];
     _added.clear();
     _updated.clear();
     _deleted.clear();
@@ -101,8 +117,9 @@ void main() {
 
   Future<void> pump(
     WidgetTester tester, {
-    TransferModel? transfer,
+    Transfer? transfer,
     String? from,
+    String? main,
     bool reducedMotion = true,
   }) async {
     await tester.binding.setSurfaceSize(const Size(390, 1000));
@@ -113,8 +130,8 @@ void main() {
         overrides: [
           accountListProvider.overrideWith(_FakeAccounts.new),
           transactionListProvider.overrideWith(_FakeTransactions.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          transferActionsProvider.overrideWithValue(_FakeActions()),
+          mainAccountIdProvider.overrideWithValue(main),
           lastTransferSourceProvider.overrideWithValue(meta),
         ],
         child: MaterialApp(
@@ -168,7 +185,7 @@ void main() {
       expect(find.text('Save transfer'), findsOneWidget);
       expect(find.text('Delete'), findsNothing);
       expect(
-        find.text('The fee leaves BCA and is counted as an expense under Fees. The transfer itself is not.'),
+        find.text('The fee leaves BCA and is counted as an expense under Admin Fee. The transfer itself is not.'),
         findsOneWidget,
       );
     });
@@ -185,6 +202,21 @@ void main() {
       await pump(tester);
 
       expect(top(tester, 'Cash'), lessThan(top(tester, 'BCA')));
+    });
+
+    testWidgets('starts from the main account, ahead of the one last used', (tester) async {
+      meta.remembered = 'dana';
+      await pump(tester, main: 'bca');
+
+      expect(top(tester, 'BCA'), lessThan(top(tester, 'Cash')));
+      expect(find.text('DANA'), findsNothing);
+    });
+
+    testWidgets('a main account that is archived is not used as the source', (tester) async {
+      _accounts = [..._accounts, _account('old', 'Old card', AccountType.bank, 0, 5, archived: true)];
+      await pump(tester, main: 'old');
+
+      expect(find.text('Old card'), findsNothing);
     });
 
     testWidgets('remembers the last source account', (tester) async {
@@ -429,36 +461,20 @@ void main() {
   });
 
   group('editing', () {
-    late TransferModel existing;
+    late Transfer existing;
 
     setUp(() {
-      existing = TransferModel(
-        id: 't1',
-        userId: 'u1',
-        fromAccountId: 'bca',
-        toAccountId: 'dana',
+      existing = fakeTransfer(
+        't1',
+        from: 'bca',
+        to: 'dana',
         amount: 500000,
         fee: 2500,
         note: 'Top up DANA',
         date: DateTime(2026, 10, 2),
-        createdAt: _at,
-        updatedAt: _at,
       );
-      _transfers = [existing];
-      _transactions = [
-        TransactionModel(
-          id: 'fee',
-          userId: 'u1',
-          amount: 2500,
-          type: TransactionType.expense,
-          categoryId: 'fees',
-          accountId: 'bca',
-          transferId: 't1',
-          date: DateTime(2026, 10, 2),
-          createdAt: _at,
-          updatedAt: _at,
-        ),
-      ];
+      // Stored the way the server holds it: two legs and a separate fee expense.
+      _transactions = [...legsOf(existing), feeOf(existing)];
     });
 
     testWidgets('is pre-filled, with Save changes beside Delete and the edit hint', (tester) async {
@@ -495,10 +511,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_updated, hasLength(1));
-      expect(_updated.single.id, 't1');
+      expect(_updated.single.transfer.id, 't1');
       expect(_updated.single.amount, 750000);
       expect(_updated.single.fee, 0);
-      expect(_updated.single.fromAccountId, 'bca');
+      expect(_updated.single.from, 'bca');
       expect(_updated.single.note, 'Top up DANA');
       expect(_added, isEmpty);
     });
@@ -511,7 +527,7 @@ void main() {
       await tester.tap(find.text('Save changes'));
       await tester.pumpAndSettle();
 
-      expect(_updated.single.toAccountId, 'cash');
+      expect(_updated.single.to, 'cash');
       expect(_updated.single.note, isNull);
     });
 

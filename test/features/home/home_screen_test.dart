@@ -8,9 +8,8 @@ import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/data/models/wishlist_model.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
-import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/accounts/ui/accounts_screen.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/alerts/providers/alert_provider.dart';
 import 'package:crowzy_finance/features/auth/providers/auth_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
@@ -26,6 +25,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../support/transfers.dart';
+
 List<TransactionModel> _all = [];
 
 class _FakeTransactions extends TransactionList {
@@ -38,13 +39,6 @@ List<AccountModel> _accounts = [];
 class _FakeAccounts extends AccountList {
   @override
   Future<List<AccountModel>> build() async => _accounts;
-}
-
-List<TransferModel> _transfers = [];
-
-class _FakeTransfers extends TransferList {
-  @override
-  Future<List<TransferModel>> build() async => _transfers;
 }
 
 AccountModel _account(String id, String name, {bool archived = false}) => AccountModel(
@@ -110,13 +104,13 @@ void main() {
   Future<void> pumpHome(
     WidgetTester tester, {
     List<TransactionModel> recent = const [],
-    List<TransferModel> transfers = const [],
+    List<Transfer> transfers = const [],
     List<WishlistModel> goals = const [],
     List<AlertModel> alerts = const [],
     List<AccountModel>? accounts,
   }) async {
-    _all = recent;
-    _transfers = transfers;
+    // A transfer is stored as its two legs, which is how the receipt finds it.
+    _all = [...recent, for (final t in transfers) ...legsOf(t)];
     _accounts = accounts ?? [_account('a', 'BCA'), _account('b', 'DANA'), _account('c', 'Cash')];
     await tester.binding.setSurfaceSize(const Size(390, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -131,12 +125,10 @@ void main() {
           ),
           transactionListProvider.overrideWith(_FakeTransactions.new),
           recentActivityProvider.overrideWithValue(mergeActivity(recent, transfers)),
-          defaultAccountIdProvider.overrideWithValue('c'),
           activeWishlistGoalsProvider.overrideWithValue(goals),
           unreadAlertsProvider.overrideWithValue(alerts),
           categoryListProvider.overrideWith(_FakeCategories.new),
           accountListProvider.overrideWith(_FakeAccounts.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: const HomeScreen()),
       ),
@@ -217,17 +209,8 @@ void main() {
   group('transfers in Recent', () {
     final yesterday = DateTime.now().subtract(const Duration(days: 1));
 
-    TransferModel transfer({String? note = 'Top up DANA'}) => TransferModel(
-          id: 't1',
-          userId: 'u',
-          fromAccountId: 'a',
-          toAccountId: 'b',
-          amount: 500000,
-          note: note,
-          date: yesterday,
-          createdAt: yesterday,
-          updatedAt: yesterday,
-        );
+    Transfer transfer({String? note = 'Top up DANA'}) =>
+        fakeTransfer('t1', from: 'a', to: 'b', amount: 500000, note: note, date: yesterday);
 
     testWidgets('a transfer shows between the transactions with its route and a brass amount', (tester) async {
       await pumpHome(

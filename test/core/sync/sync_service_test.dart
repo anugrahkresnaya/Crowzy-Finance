@@ -10,7 +10,6 @@ import 'package:crowzy_finance/data/models/budget_model.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/data/models/wishlist_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
@@ -35,7 +34,6 @@ void main() {
   late Box<Map> wishlist;
   late Box<Map> budgets;
   late Box<Map> accounts;
-  late Box<Map> transfers;
   late Box<Map> alerts;
   late Box syncMeta;
   late SyncService service;
@@ -90,7 +88,6 @@ void main() {
     wishlist = await Hive.openBox<Map>('t_wishlist');
     budgets = await Hive.openBox<Map>('t_budgets');
     accounts = await Hive.openBox<Map>('t_accounts');
-    transfers = await Hive.openBox<Map>('t_transfers');
     alerts = await Hive.openBox<Map>('t_alerts');
     syncMeta = await Hive.openBox('t_sync_meta');
 
@@ -101,7 +98,6 @@ void main() {
       wishlist,
       budgets,
       accounts,
-      transfers,
       alerts,
       syncMeta,
     );
@@ -109,7 +105,7 @@ void main() {
 
   tearDown(() async {
     await supabase.dispose();
-    for (final box in [categories, transactions, wishlist, budgets, accounts, transfers, alerts, syncMeta]) {
+    for (final box in [categories, transactions, wishlist, budgets, accounts, alerts, syncMeta]) {
       await box.deleteFromDisk();
     }
   });
@@ -176,29 +172,7 @@ void main() {
         userId: userId,
         name: name,
         type: AccountType.bank,
-        openingBalance: opening,
-        isDeleted: isDeleted,
-        createdAt: DateTime.utc(2026, 7, 1),
-        updatedAt: updatedAt ?? DateTime.utc(2026, 7, 1),
-        isSynced: isSynced,
-      );
-
-  TransferModel transfer(
-    String id, {
-    double amount = 500000,
-    double fee = 2500,
-    bool isSynced = true,
-    bool isDeleted = false,
-    DateTime? updatedAt,
-  }) =>
-      TransferModel(
-        id: id,
-        userId: userId,
-        fromAccountId: 'a1',
-        toAccountId: 'a2',
-        amount: amount,
-        fee: fee,
-        date: DateTime.utc(2026, 7, 5),
+        initialBalance: opening,
         isDeleted: isDeleted,
         createdAt: DateTime.utc(2026, 7, 1),
         updatedAt: updatedAt ?? DateTime.utc(2026, 7, 1),
@@ -405,71 +379,87 @@ void main() {
       final rows = jsonDecode(posts('accounts').single.body) as List;
       expect(rows.map((r) => r['id']), ['a1']);
       expect(rows.single.containsKey('is_synced'), isFalse);
-      expect(rows.single['opening_balance'], 250000);
+      expect(rows.single['initial_balance'], 250000);
       expect(rows.single['type'], 'bank');
 
       final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a1')!));
       expect(stored.isSynced, isTrue);
     });
 
-    test('an untouched default account is pushed so as not to overwrite the server one', () async {
+    test('an e-wallet, a main account and an archived one keep their live column values', () async {
       await accounts.put(
-        'cash',
-        account('cash', name: 'Cash', isSynced: false, updatedAt: DateTime.utc(1970)).toJson(),
+        'a1',
+        account('a1', isSynced: false).copyWith(type: AccountType.ewallet, isMain: true, isArchived: true).toJson(),
       );
 
       await service.sync(userId);
 
-      final request = posts('accounts').single;
-      expect(request.headers['Prefer'], contains('resolution=ignore-duplicates'));
-      expect(AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('cash')!)).isSynced, isTrue);
+      final row = (jsonDecode(posts('accounts').single.body) as List).single as Map;
+      expect(row['type'], 'e_wallet');
+      expect(row['is_main'], isTrue);
+      expect(row['is_archived'], isTrue);
     });
 
-    test('a changed account is pushed as an ordinary upsert that replaces the server row', () async {
-      await accounts.put('a1', account('a1', isSynced: false, opening: 5).toJson());
-
-      await service.sync(userId);
-
-      expect(posts('accounts').single.headers['Prefer'], contains('resolution=merge-duplicates'));
-    });
-
-    test('an untouched and a changed account in one sync make one request each', () async {
-      await accounts.put('cash', account('cash', isSynced: false, updatedAt: DateTime.utc(1970)).toJson());
+    test('accounts are pushed before the transactions that point at them', () async {
+      await categories.put('c1', category('c1', isSynced: false).toJson());
+      await transactions.put('x1', transaction('x1', isSynced: false).toJson());
       await accounts.put('a1', account('a1', isSynced: false).toJson());
 
       await service.sync(userId);
 
-      final preferences = posts('accounts').map((r) => r.headers['Prefer']).toList();
-      expect(preferences, hasLength(2));
-      expect(preferences.where((p) => p!.contains('ignore-duplicates')), hasLength(1));
-      expect(preferences.where((p) => p!.contains('merge-duplicates')), hasLength(1));
+      final order = requests
+          .where((r) => r.method == 'POST')
+          .map((r) => r.url.pathSegments.last)
+          .toList();
+      expect(order, ['categories', 'accounts', 'transactions']);
     });
 
-    test('the server\'s version of the default account replaces the untouched local one', () async {
-      await accounts.put(
-        'cash',
-        account('cash', name: 'Cash', isSynced: false, updatedAt: DateTime.utc(1970)).toJson(),
+    test('a transaction with an account and a transfer group is pushed with both columns', () async {
+      await transactions.put(
+        'x1',
+        transaction('x1', isSynced: false).copyWith(accountId: 'a1', transferGroupId: 'g1').toJson(),
       );
+
+      await service.sync(userId);
+
+      final row = (jsonDecode(posts('transactions').single.body) as List).single as Map;
+      expect(row['account_id'], 'a1');
+      expect(row['transfer_group_id'], 'g1');
+    });
+
+    test('remote accounts from the live schema are read, including e_wallet and the main flag', () async {
       remote['accounts'] = [
-        account('cash', name: 'Pocket cash', opening: 900000, updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
+        {
+          'id': 'a9',
+          'user_id': userId,
+          'name': 'DANA',
+          'type': 'e_wallet',
+          'initial_balance': '1850000.0',
+          'is_deleted': false,
+          'is_main': true,
+          'created_at': '2026-08-05T00:00:00.000Z',
+          'updated_at': '2026-08-10T00:00:00.000Z',
+        },
       ];
 
       await service.sync(userId);
 
-      final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('cash')!));
-      expect(stored.name, 'Pocket cash');
-      expect(stored.openingBalance, 900000);
+      final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a9')!));
+      expect(stored.type, AccountType.ewallet);
+      expect(stored.isMain, isTrue);
+      expect(stored.isArchived, isFalse); // the live table has no such column yet
+      expect(stored.initialBalance, 1850000);
     });
 
     test('remote accounts are stored as synced, reading numeric strings too', () async {
       remote['accounts'] = [
-        {...account('a1', updatedAt: DateTime.utc(2026, 7, 3)).toSupabaseRow(), 'opening_balance': '1850000.00'},
+        {...account('a1', updatedAt: DateTime.utc(2026, 7, 3)).toSupabaseRow(), 'initial_balance': '1850000.00'},
       ];
 
       await service.sync(userId);
 
       final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a1')!));
-      expect(stored.openingBalance, 1850000);
+      expect(stored.initialBalance, 1850000);
       expect(stored.isSynced, isTrue);
       expect(
         DateTime.parse(syncMeta.get('last_synced_accounts_$userId') as String),
@@ -488,82 +478,6 @@ void main() {
 
       final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a1')!));
       expect(stored.name, 'Mine');
-    });
-  });
-
-  group('transfers', () {
-    test('an unsynced transfer is pushed with its fee and marked synced', () async {
-      await transfers.put('t1', transfer('t1', isSynced: false).toJson());
-      await transfers.put('t2', transfer('t2').toJson());
-
-      await service.sync(userId);
-
-      final rows = jsonDecode(posts('transfers').single.body) as List;
-      expect(rows.map((r) => r['id']), ['t1']);
-      expect(rows.single.containsKey('is_synced'), isFalse);
-      expect(rows.single['amount'], 500000);
-      expect(rows.single['fee'], 2500);
-      expect(rows.single['from_account_id'], 'a1');
-      expect(rows.single['to_account_id'], 'a2');
-
-      final stored = TransferModel.fromJson(Map<String, dynamic>.from(transfers.get('t1')!));
-      expect(stored.isSynced, isTrue);
-    });
-
-    test('a deleted transfer is pushed as a soft delete', () async {
-      await transfers.put('t1', transfer('t1', isDeleted: true, isSynced: false).toJson());
-
-      await service.sync(userId);
-
-      final rows = jsonDecode(posts('transfers').single.body) as List;
-      expect(rows.single['is_deleted'], isTrue);
-    });
-
-    test('accounts and transfers are pushed before the transactions that point at them', () async {
-      await categories.put('c1', category('c1', isSynced: false).toJson());
-      await transactions.put('x1', transaction('x1', isSynced: false).toJson());
-      await transfers.put('t1', transfer('t1', isSynced: false).toJson());
-      await accounts.put('a1', account('a1', isSynced: false).toJson());
-
-      await service.sync(userId);
-
-      final order = requests
-          .where((r) => r.method == 'POST')
-          .map((r) => r.url.pathSegments.last)
-          .toList();
-      expect(order, ['categories', 'accounts', 'transfers', 'transactions']);
-    });
-
-    test('remote transfers are stored as synced, reading numeric strings too', () async {
-      remote['transfers'] = [
-        {
-          ...transfer('t1', updatedAt: DateTime.utc(2026, 7, 3)).toSupabaseRow(),
-          'amount': '500000.00',
-          'fee': '2500.00',
-        },
-      ];
-
-      await service.sync(userId);
-
-      final stored = TransferModel.fromJson(Map<String, dynamic>.from(transfers.get('t1')!));
-      expect(stored.amount, 500000);
-      expect(stored.fee, 2500);
-      expect(stored.isSynced, isTrue);
-    });
-
-    test('a newer remote transfer replaces a synced local one, an unsynced one is kept', () async {
-      await transfers.put('t1', transfer('t1', amount: 100).toJson());
-      await transfers.put('t2', transfer('t2', amount: 100, isSynced: false).toJson());
-      remote['transfers'] = [
-        transfer('t1', amount: 900, updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
-        transfer('t2', amount: 900, updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
-      ];
-      failPostWithStatus = 500;
-
-      await expectLater(service.sync(userId), throwsA(isA<SyncException>()));
-
-      expect(TransferModel.fromJson(Map<String, dynamic>.from(transfers.get('t1')!)).amount, 900);
-      expect(TransferModel.fromJson(Map<String, dynamic>.from(transfers.get('t2')!)).amount, 100);
     });
   });
 

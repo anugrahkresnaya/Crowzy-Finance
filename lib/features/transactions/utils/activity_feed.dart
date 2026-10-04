@@ -3,7 +3,7 @@ import 'package:flutter/material.dart' show DateTimeRange;
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
-import '../../../data/models/transfer_model.dart';
+import '../../../data/models/transfer.dart';
 
 /// One line of the Activity list: a transaction, or a transfer between
 /// accounts. A transfer is not income or expense, so it never counts towards a
@@ -34,7 +34,7 @@ final class TransactionEntry extends ActivityEntry {
 final class TransferEntry extends ActivityEntry {
   const TransferEntry(this.transfer);
 
-  final TransferModel transfer;
+  final Transfer transfer;
 
   @override
   String get id => transfer.id;
@@ -59,7 +59,7 @@ int compareNewestFirst(ActivityEntry a, ActivityEntry b) {
 /// Transactions and transfers as one list, newest first.
 List<ActivityEntry> mergeActivity(
   Iterable<TransactionModel> transactions,
-  Iterable<TransferModel> transfers,
+  Iterable<Transfer> transfers,
 ) {
   return [
     for (final transaction in transactions) TransactionEntry(transaction),

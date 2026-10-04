@@ -1,9 +1,10 @@
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/features/transactions/utils/activity_feed.dart';
 import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/transfers.dart';
 
 void main() {
   TransactionEntry tx(
@@ -13,7 +14,7 @@ void main() {
     TransactionType type = TransactionType.expense,
     String category = 'food',
     String? note,
-    String? transferId,
+    String? transferGroupId,
   }) =>
       TransactionEntry(
         TransactionModel(
@@ -23,7 +24,7 @@ void main() {
           type: type,
           categoryId: category,
           note: note,
-          transferId: transferId,
+          transferGroupId: transferGroupId,
           date: date,
           createdAt: date,
           updatedAt: date,
@@ -38,19 +39,7 @@ void main() {
     String to = 'dana',
     String? note,
   }) =>
-      TransferEntry(
-        TransferModel(
-          id: id,
-          userId: 'u1',
-          fromAccountId: from,
-          toAccountId: to,
-          amount: amount,
-          note: note,
-          date: date,
-          createdAt: date,
-          updatedAt: date,
-        ),
-      );
+      TransferEntry(fakeTransfer(id, from: from, to: to, amount: amount, note: note, date: date));
 
   List<String> ids(Iterable<ActivityEntry> list) => list.map((t) => t.id).toList();
 
@@ -226,7 +215,7 @@ void main() {
     test('a transfer sits above a transaction from the same moment, such as its own fee', () {
       final moment = DateTime(2026, 10, 2, 12);
       final merged = mergeActivity(
-        [tx('fee', moment, transferId: 't').transaction, tx('lunch', moment).transaction],
+        [tx('fee', moment).transaction, tx('lunch', moment).transaction],
         [transfer('t', moment).transfer],
       );
 
@@ -271,7 +260,7 @@ void main() {
     test('a transfer never counts towards the day, but its fee expense does', () {
       final days = groupActivityByDay([
         transfer('t', DateTime(2026, 10, 2), amount: 500000),
-        tx('fee', DateTime(2026, 10, 2), amount: 2500, transferId: 't'),
+        tx('fee', DateTime(2026, 10, 2), amount: 2500),
         tx('lunch', DateTime(2026, 10, 2), amount: 68000),
       ]);
 

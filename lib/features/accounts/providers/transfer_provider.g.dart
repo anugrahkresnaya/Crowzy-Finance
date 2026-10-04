@@ -9,53 +9,6 @@ part of 'transfer_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(transfersBox)
-final transfersBoxProvider = TransfersBoxProvider._();
-
-final class TransfersBoxProvider
-    extends
-        $FunctionalProvider<
-          Box<Map<dynamic, dynamic>>,
-          Box<Map<dynamic, dynamic>>,
-          Box<Map<dynamic, dynamic>>
-        >
-    with $Provider<Box<Map<dynamic, dynamic>>> {
-  TransfersBoxProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'transfersBoxProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$transfersBoxHash();
-
-  @$internal
-  @override
-  $ProviderElement<Box<Map<dynamic, dynamic>>> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  Box<Map<dynamic, dynamic>> create(Ref ref) {
-    return transfersBox(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Box<Map<dynamic, dynamic>> value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<Box<Map<dynamic, dynamic>>>(value),
-    );
-  }
-}
-
-String _$transfersBoxHash() => r'ffe2b92fa44a5684621ae5fa8c3a5cb8e0139aa7';
-
 @ProviderFor(lastTransferSource)
 final lastTransferSourceProvider = LastTransferSourceProvider._();
 
@@ -104,59 +57,17 @@ final class LastTransferSourceProvider
 String _$lastTransferSourceHash() =>
     r'2bdba0602f84e368e6ee2a3ce8f0af0b8ee9bf31';
 
-@ProviderFor(transferRepository)
-final transferRepositoryProvider = TransferRepositoryProvider._();
+/// Every transfer, put back together from its two transactions. Newest first.
 
-final class TransferRepositoryProvider
-    extends
-        $FunctionalProvider<
-          TransferRepository,
-          TransferRepository,
-          TransferRepository
-        >
-    with $Provider<TransferRepository> {
-  TransferRepositoryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'transferRepositoryProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$transferRepositoryHash();
-
-  @$internal
-  @override
-  $ProviderElement<TransferRepository> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  TransferRepository create(Ref ref) {
-    return transferRepository(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(TransferRepository value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<TransferRepository>(value),
-    );
-  }
-}
-
-String _$transferRepositoryHash() =>
-    r'2bb2f237ad5be9222e580712e13e37e16a7fcebe';
-
-@ProviderFor(TransferList)
+@ProviderFor(transferList)
 final transferListProvider = TransferListProvider._();
 
+/// Every transfer, put back together from its two transactions. Newest first.
+
 final class TransferListProvider
-    extends $AsyncNotifierProvider<TransferList, List<TransferModel>> {
+    extends $FunctionalProvider<List<Transfer>, List<Transfer>, List<Transfer>>
+    with $Provider<List<Transfer>> {
+  /// Every transfer, put back together from its two transactions. Newest first.
   TransferListProvider._()
     : super(
         from: null,
@@ -173,26 +84,115 @@ final class TransferListProvider
 
   @$internal
   @override
-  TransferList create() => TransferList();
-}
+  $ProviderElement<List<Transfer>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
 
-String _$transferListHash() => r'ca800547e9f3b7174d8e0c31f50ec3bb2f3c59f3';
-
-abstract class _$TransferList extends $AsyncNotifier<List<TransferModel>> {
-  FutureOr<List<TransferModel>> build();
-  @$mustCallSuper
   @override
-  void runBuild() {
-    final ref =
-        this.ref as $Ref<AsyncValue<List<TransferModel>>, List<TransferModel>>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<AsyncValue<List<TransferModel>>, List<TransferModel>>,
-              AsyncValue<List<TransferModel>>,
-              Object?,
-              Object?
-            >;
-    element.handleCreate(ref, build);
+  List<Transfer> create(Ref ref) {
+    return transferList(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<Transfer> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<Transfer>>(value),
+    );
   }
 }
+
+String _$transferListHash() => r'bbd9be2a90a1dd5b2ee38603e28e34139a10ac9f';
+
+/// A transfer's fee expense id → its transfer.
+
+@ProviderFor(feeTransfers)
+final feeTransfersProvider = FeeTransfersProvider._();
+
+/// A transfer's fee expense id → its transfer.
+
+final class FeeTransfersProvider
+    extends
+        $FunctionalProvider<
+          Map<String, Transfer>,
+          Map<String, Transfer>,
+          Map<String, Transfer>
+        >
+    with $Provider<Map<String, Transfer>> {
+  /// A transfer's fee expense id → its transfer.
+  FeeTransfersProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'feeTransfersProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$feeTransfersHash();
+
+  @$internal
+  @override
+  $ProviderElement<Map<String, Transfer>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  Map<String, Transfer> create(Ref ref) {
+    return feeTransfers(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Map<String, Transfer> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Map<String, Transfer>>(value),
+    );
+  }
+}
+
+String _$feeTransfersHash() => r'fae3f7a67ea22f79a9aaf3c7a3bed26f4507678c';
+
+@ProviderFor(transferActions)
+final transferActionsProvider = TransferActionsProvider._();
+
+final class TransferActionsProvider
+    extends
+        $FunctionalProvider<TransferActions, TransferActions, TransferActions>
+    with $Provider<TransferActions> {
+  TransferActionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'transferActionsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$transferActionsHash();
+
+  @$internal
+  @override
+  $ProviderElement<TransferActions> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  TransferActions create(Ref ref) {
+    return transferActions(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TransferActions value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TransferActions>(value),
+    );
+  }
+}
+
+String _$transferActionsHash() => r'0a7eba7ff4b133c298355b1407694ddbbe437e28';

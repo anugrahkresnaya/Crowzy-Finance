@@ -54,7 +54,7 @@ final class ChatContextProvider
   }
 }
 
-String _$chatContextHash() => r'96448b1fee9c73cb85e0f2223d4725361f371872';
+String _$chatContextHash() => r'1a8d78c33cee0323e01b8b5e398398f58a12d54f';
 
 @ProviderFor(ChatQa)
 final chatQaProvider = ChatQaProvider._();
@@ -87,7 +87,7 @@ final class ChatQaProvider extends $NotifierProvider<ChatQa, ChatQaState> {
   }
 }
 
-String _$chatQaHash() => r'b20d9c1937ff451944bfc768348e137e74bf86e5';
+String _$chatQaHash() => r'67210d6c29f98ba25ea02a780a5c88fe192e531c';
 
 abstract class _$ChatQa extends $Notifier<ChatQaState> {
   ChatQaState build();

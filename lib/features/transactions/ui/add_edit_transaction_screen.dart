@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/default_categories.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
 import '../../../core/utils/amount_input.dart';
@@ -135,12 +134,9 @@ class _AddEditTransactionScreenState
       );
     });
 
-    // Fees are only ever recorded by a transfer, so they are not offered here.
-    final categories = (_type == TransactionType.income
-            ? ref.watch(incomeCategoriesProvider)
-            : ref.watch(expenseCategoriesProvider))
-        .where((c) => c.id != DefaultCategories.feesId)
-        .toList();
+    final categories = _type == TransactionType.income
+        ? ref.watch(incomeCategoriesProvider)
+        : ref.watch(expenseCategoriesProvider);
 
     // Wait for the categories before choosing one: while they are still
     // loading the list is empty, and acting on it would wipe the selection.
@@ -159,17 +155,18 @@ class _AddEditTransactionScreenState
     final active = accounts.where((a) => !a.isArchived).toList();
 
     // As with the category, wait for the accounts before choosing one. A new
-    // transaction starts on the account last used, else the default Cash one.
+    // transaction starts on the main account, else the one last used, else the
+    // first; an existing one keeps its own, which may be none.
     if (accounts.isNotEmpty && !_accountInitialized) {
       _accountInitialized = true;
-      final defaultId = ref.read(defaultAccountIdProvider);
-      if (_accountId == null || !accounts.any((a) => a.id == _accountId)) {
+      if (!_isEditing && (_accountId == null || !active.any((a) => a.id == _accountId))) {
+        final main = ref.read(mainAccountIdProvider);
         final lastUsed = ref.read(lastUsedAccountIdProvider);
-        _accountId = _isEditing
-            ? defaultId
+        _accountId = active.any((a) => a.id == main)
+            ? main
             : active.any((a) => a.id == lastUsed)
                 ? lastUsed
-                : (active.any((a) => a.id == defaultId) ? defaultId : active.firstOrNull?.id);
+                : active.firstOrNull?.id;
       }
     }
     final account = accounts.where((a) => a.id == _accountId).firstOrNull;
@@ -218,7 +215,7 @@ class _AddEditTransactionScreenState
                 rows: [
                   FormCardRow.value(
                     label: 'Account',
-                    value: account?.name ?? '—',
+                    value: account?.name ?? 'None',
                     showChevron: true,
                     onTap: isLoading || accounts.isEmpty
                         ? null

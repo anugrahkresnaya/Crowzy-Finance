@@ -5,7 +5,7 @@ import '../../../../core/theme/app_text.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/widgets/press_scale.dart';
-import '../../../../data/models/transfer_model.dart';
+import '../../../../data/models/transfer.dart';
 
 /// One transfer as a hairline-divided row. It has its own look, a brass
 /// swap icon and a brass amount with no sign, because a transfer is neither
@@ -25,7 +25,7 @@ class TransferTile extends StatelessWidget {
     this.perspectiveAccountId,
   });
 
-  final TransferModel transfer;
+  final Transfer transfer;
   final String fromName;
   final String toName;
   final VoidCallback? onTap;

@@ -1,17 +1,17 @@
-import 'package:hive/hive.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../core/constants/hive_constants.dart';
-import '../../../data/models/transfer_model.dart';
+import '../../../core/constants/default_categories.dart';
+import '../../../data/models/category_model.dart';
+import '../../../data/models/transaction_model.dart';
+import '../../../data/models/transaction_type.dart';
+import '../../../data/models/transfer.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../categories/providers/category_provider.dart';
 import '../../transactions/providers/transaction_provider.dart';
-import '../repository/transfer_repository.dart';
+import '../utils/transfers.dart';
 
 part 'transfer_provider.g.dart';
-
-@riverpod
-Box<Map> transfersBox(Ref ref) => Hive.box<Map>(HiveConstants.transfersBox);
 
 /// Remembers which account the user last sent money from, so the next transfer
 /// can start there.
@@ -20,11 +20,11 @@ class LastTransferSource {
 
   static const _key = 'last_transfer_from';
 
-  final Box _box;
+  final dynamic _box;
 
   String? get value => _box.get(_key) as String?;
 
-  Future<void> save(String accountId) => _box.put(_key, accountId);
+  Future<void> save(String accountId) async => _box.put(_key, accountId);
 }
 
 @riverpod
@@ -32,25 +32,36 @@ LastTransferSource lastTransferSource(Ref ref) {
   return LastTransferSource(ref.watch(syncMetaBoxProvider));
 }
 
+/// Every transfer, put back together from its two transactions. Newest first.
 @riverpod
-TransferRepository transferRepository(Ref ref) {
-  return TransferRepository(
-    ref.watch(transfersBoxProvider),
-    ref.watch(transactionRepositoryProvider),
-  );
+List<Transfer> transferList(Ref ref) {
+  return deriveTransfers(ref.watch(transactionListProvider).value ?? const []);
 }
 
+/// A transfer's fee expense id → its transfer.
 @riverpod
-class TransferList extends _$TransferList {
-  @override
-  Future<List<TransferModel>> build() async {
-    final repository = ref.watch(transferRepositoryProvider);
-    // A fee expense that fell out of step with its transfer is put right here.
-    if (await repository.reconcileFees()) ref.invalidate(transactionListProvider);
-    return repository.getAll();
-  }
+Map<String, Transfer> feeTransfers(Ref ref) {
+  return feesByTransfer(ref.watch(transferListProvider));
+}
 
-  Future<void> addTransfer({
+/// The name a transfer's fee is filed under. It matches the category the user
+/// already has by this name, and is created for them the first time it is
+/// needed.
+const adminFeeCategoryName = 'Admin Fee';
+
+// Kept alive: its methods await storage, and a provider read once and not
+// listened to would otherwise be disposed part-way through.
+@Riverpod(keepAlive: true)
+TransferActions transferActions(Ref ref) => TransferActions(ref);
+
+/// Creates, changes and removes transfers. Each is a handful of ordinary
+/// transaction writes, all marked unsynced, so they sync like anything else.
+class TransferActions {
+  TransferActions(this._ref);
+
+  final Ref _ref;
+
+  Future<void> create({
     required String fromAccountId,
     required String toAccountId,
     required double amount,
@@ -58,49 +69,155 @@ class TransferList extends _$TransferList {
     required DateTime date,
     String? note,
   }) async {
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(transferRepositoryProvider);
-      final userId = ref.read(currentUserProvider)?.id;
-      if (userId == null) throw StateError('No authenticated user');
+    final userId = _userId();
+    final repository = _ref.read(transactionRepositoryProvider);
+    final group = const Uuid().v4();
+    final now = DateTime.now();
 
-      final now = DateTime.now();
-      await repository.create(
-        TransferModel(
+    TransactionModel leg({
+      required TransactionType type,
+      required String categoryId,
+      required String accountId,
+    }) =>
+        TransactionModel(
           id: const Uuid().v4(),
           userId: userId,
-          fromAccountId: fromAccountId,
-          toAccountId: toAccountId,
           amount: amount,
-          fee: fee,
+          type: type,
+          categoryId: categoryId,
           note: note,
+          accountId: accountId,
+          transferGroupId: group,
           date: date,
           createdAt: now,
           updatedAt: now,
-        ),
-      );
-      return _refresh(repository);
-    });
+          isSynced: false,
+        );
+
+    await repository.save(leg(
+      type: TransactionType.income,
+      categoryId: DefaultCategories.transferInId,
+      accountId: toAccountId,
+    ));
+    await repository.save(leg(
+      type: TransactionType.expense,
+      categoryId: DefaultCategories.transferOutId,
+      accountId: fromAccountId,
+    ));
+    if (fee > 0) await _writeFee(group, userId, fee, fromAccountId, date, now);
+
+    _ref.invalidate(transactionListProvider);
   }
 
-  Future<void> updateTransfer(TransferModel transfer) async {
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(transferRepositoryProvider);
-      await repository.update(transfer);
-      return _refresh(repository);
-    });
+  Future<void> update(
+    Transfer transfer, {
+    required String fromAccountId,
+    required String toAccountId,
+    required double amount,
+    double fee = 0,
+    required DateTime date,
+    String? note,
+  }) async {
+    final userId = _userId();
+    final repository = _ref.read(transactionRepositoryProvider);
+    final now = DateTime.now();
+
+    Future<void> change(String id, String accountId) async {
+      final leg = repository.findIncludingDeleted(id);
+      if (leg == null) return;
+      await repository.save(leg.copyWith(
+        amount: amount,
+        accountId: accountId,
+        note: note,
+        date: date,
+        updatedAt: now,
+        isSynced: false,
+      ));
+    }
+
+    await change(transfer.outLegId, fromAccountId);
+    await change(transfer.inLegId, toAccountId);
+
+    final feeRow = repository.findIncludingDeleted(feeIdFor(transfer.id));
+    if (fee > 0) {
+      await _writeFee(transfer.id, userId, fee, fromAccountId, date, now);
+    } else if (feeRow != null && !feeRow.isDeleted) {
+      await repository.save(feeRow.copyWith(isDeleted: true, updatedAt: now, isSynced: false));
+    }
+
+    _ref.invalidate(transactionListProvider);
   }
 
-  Future<void> deleteTransfer(String id) async {
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(transferRepositoryProvider);
-      await repository.delete(id);
-      return _refresh(repository);
-    });
+  Future<void> delete(Transfer transfer) async {
+    final repository = _ref.read(transactionRepositoryProvider);
+    final now = DateTime.now();
+
+    for (final id in [transfer.outLegId, transfer.inLegId, feeIdFor(transfer.id)]) {
+      final row = repository.findIncludingDeleted(id);
+      if (row == null || row.isDeleted) continue;
+      await repository.save(row.copyWith(isDeleted: true, updatedAt: now, isSynced: false));
+    }
+
+    _ref.invalidate(transactionListProvider);
   }
 
-  /// A transfer's fee is a transaction, so the transaction list has changed too.
-  List<TransferModel> _refresh(TransferRepository repository) {
-    ref.invalidate(transactionListProvider);
-    return repository.getAll();
+  String _userId() {
+    final id = _ref.read(currentUserProvider)?.id;
+    if (id == null) throw StateError('No authenticated user');
+    return id;
+  }
+
+  /// Writes (or revives) the fee expense on the source account.
+  Future<void> _writeFee(
+    String group,
+    String userId,
+    double fee,
+    String fromAccountId,
+    DateTime date,
+    DateTime now,
+  ) async {
+    final repository = _ref.read(transactionRepositoryProvider);
+    final existing = repository.findIncludingDeleted(feeIdFor(group));
+
+    await repository.save(
+      TransactionModel(
+        id: feeIdFor(group),
+        userId: userId,
+        amount: fee,
+        type: TransactionType.expense,
+        categoryId: existing?.categoryId ?? await _adminFeeCategoryId(userId),
+        note: 'Transfer fee',
+        accountId: fromAccountId,
+        date: date,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        isSynced: false,
+      ),
+    );
+  }
+
+  Future<String> _adminFeeCategoryId(String userId) async {
+    final repository = _ref.read(categoryRepositoryProvider);
+    for (final category in repository.getAll()) {
+      if (category.type == TransactionType.expense &&
+          category.name.trim().toLowerCase() == adminFeeCategoryName.toLowerCase()) {
+        return category.id;
+      }
+    }
+
+    final now = DateTime.now();
+    final created = CategoryModel(
+      id: const Uuid().v4(),
+      userId: userId,
+      name: adminFeeCategoryName,
+      icon: 'payments',
+      type: TransactionType.expense,
+      createdAt: now,
+      updatedAt: now,
+      isSynced: false,
+    );
+    await repository.save(created);
+    _ref.invalidate(categoryListProvider);
+    return created.id;
   }
 }

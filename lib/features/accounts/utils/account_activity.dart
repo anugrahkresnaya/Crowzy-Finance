@@ -1,28 +1,31 @@
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction_model.dart';
-import '../../../data/models/transfer_model.dart';
+import '../../../data/models/transfer.dart';
+import 'account_balance.dart';
 
 /// How many things happened on each account in [month]: its own transactions
-/// and the transfers it took part in. A transfer's fee is part of the transfer
-/// and is not counted again. A transaction with no account counts for
-/// [defaultAccountId].
+/// and the transfers it took part in. The legs of a transfer are counted once,
+/// as the transfer, and its fee is part of the transfer and not counted again.
+/// Transactions on no account count under [unassignedAccountId].
+///
+/// [transactions] should already leave out the legs of the given [transfers].
 Map<String, int> entriesInMonth({
   required Iterable<TransactionModel> transactions,
-  required Iterable<TransferModel> transfers,
+  required Iterable<Transfer> transfers,
   required DateTime month,
-  required String? defaultAccountId,
+  Set<String> feeIds = const {},
 }) {
   final counts = <String, int>{};
 
   void bump(String? accountId) {
-    if (accountId == null) return;
-    counts[accountId] = (counts[accountId] ?? 0) + 1;
+    final key = accountId ?? unassignedAccountId;
+    counts[key] = (counts[key] ?? 0) + 1;
   }
 
   for (final transaction in transactions) {
-    if (transaction.transferId != null) continue;
+    if (feeIds.contains(transaction.id)) continue;
     if (!DateFormatter.isSameMonth(transaction.date, month)) continue;
-    bump(transaction.accountId ?? defaultAccountId);
+    bump(transaction.accountId);
   }
   for (final transfer in transfers) {
     if (!DateFormatter.isSameMonth(transfer.date, month)) continue;
@@ -32,9 +35,9 @@ Map<String, int> entriesInMonth({
   return counts;
 }
 
-/// "Default account", or how busy the account has been this month.
-String accountSubtitle({required bool isDefault, required int entriesThisMonth}) {
-  if (isDefault) return 'Default account';
+/// "Main account", or how busy the account has been this month.
+String accountSubtitle({required bool isMain, required int entriesThisMonth}) {
+  if (isMain) return 'Main account';
   return switch (entriesThisMonth) {
     0 => 'No activity this month',
     1 => '1 entry this month',

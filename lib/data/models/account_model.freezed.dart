@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AccountModel {
 
- String get id;@JsonKey(name: 'user_id') String get userId; String get name; AccountType get type;@JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson) double get openingBalance;@JsonKey(name: 'is_archived') bool get isArchived;@JsonKey(name: 'is_deleted') bool get isDeleted;@JsonKey(name: 'created_at') DateTime get createdAt;@JsonKey(name: 'updated_at') DateTime get updatedAt;@JsonKey(name: 'is_synced') bool get isSynced;
+ String get id;@JsonKey(name: 'user_id') String get userId; String get name; AccountType get type;@JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson) double get initialBalance;@JsonKey(name: 'is_main') bool get isMain;@JsonKey(name: 'is_archived') bool get isArchived;@JsonKey(name: 'is_deleted') bool get isDeleted;@JsonKey(name: 'created_at') DateTime get createdAt;@JsonKey(name: 'updated_at') DateTime get updatedAt;@JsonKey(name: 'is_synced') bool get isSynced;
 /// Create a copy of AccountModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $AccountModelCopyWith<AccountModel> get copyWith => _$AccountModelCopyWithImpl<A
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AccountModel&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.openingBalance, openingBalance) || other.openingBalance == openingBalance)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.isSynced, isSynced) || other.isSynced == isSynced));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AccountModel&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.initialBalance, initialBalance) || other.initialBalance == initialBalance)&&(identical(other.isMain, isMain) || other.isMain == isMain)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.isSynced, isSynced) || other.isSynced == isSynced));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,userId,name,type,openingBalance,isArchived,isDeleted,createdAt,updatedAt,isSynced);
+int get hashCode => Object.hash(runtimeType,id,userId,name,type,initialBalance,isMain,isArchived,isDeleted,createdAt,updatedAt,isSynced);
 
 @override
 String toString() {
-  return 'AccountModel(id: $id, userId: $userId, name: $name, type: $type, openingBalance: $openingBalance, isArchived: $isArchived, isDeleted: $isDeleted, createdAt: $createdAt, updatedAt: $updatedAt, isSynced: $isSynced)';
+  return 'AccountModel(id: $id, userId: $userId, name: $name, type: $type, initialBalance: $initialBalance, isMain: $isMain, isArchived: $isArchived, isDeleted: $isDeleted, createdAt: $createdAt, updatedAt: $updatedAt, isSynced: $isSynced)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $AccountModelCopyWith<$Res>  {
   factory $AccountModelCopyWith(AccountModel value, $Res Function(AccountModel) _then) = _$AccountModelCopyWithImpl;
 @useResult
 $Res call({
- String id,@JsonKey(name: 'user_id') String userId, String name, AccountType type,@JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson) double openingBalance,@JsonKey(name: 'is_archived') bool isArchived,@JsonKey(name: 'is_deleted') bool isDeleted,@JsonKey(name: 'created_at') DateTime createdAt,@JsonKey(name: 'updated_at') DateTime updatedAt,@JsonKey(name: 'is_synced') bool isSynced
+ String id,@JsonKey(name: 'user_id') String userId, String name, AccountType type,@JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson) double initialBalance,@JsonKey(name: 'is_main') bool isMain,@JsonKey(name: 'is_archived') bool isArchived,@JsonKey(name: 'is_deleted') bool isDeleted,@JsonKey(name: 'created_at') DateTime createdAt,@JsonKey(name: 'updated_at') DateTime updatedAt,@JsonKey(name: 'is_synced') bool isSynced
 });
 
 
@@ -65,14 +65,15 @@ class _$AccountModelCopyWithImpl<$Res>
 
 /// Create a copy of AccountModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? userId = null,Object? name = null,Object? type = null,Object? openingBalance = null,Object? isArchived = null,Object? isDeleted = null,Object? createdAt = null,Object? updatedAt = null,Object? isSynced = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? userId = null,Object? name = null,Object? type = null,Object? initialBalance = null,Object? isMain = null,Object? isArchived = null,Object? isDeleted = null,Object? createdAt = null,Object? updatedAt = null,Object? isSynced = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as AccountType,openingBalance: null == openingBalance ? _self.openingBalance : openingBalance // ignore: cast_nullable_to_non_nullable
-as double,isArchived: null == isArchived ? _self.isArchived : isArchived // ignore: cast_nullable_to_non_nullable
+as AccountType,initialBalance: null == initialBalance ? _self.initialBalance : initialBalance // ignore: cast_nullable_to_non_nullable
+as double,isMain: null == isMain ? _self.isMain : isMain // ignore: cast_nullable_to_non_nullable
+as bool,isArchived: null == isArchived ? _self.isArchived : isArchived // ignore: cast_nullable_to_non_nullable
 as bool,isDeleted: null == isDeleted ? _self.isDeleted : isDeleted // ignore: cast_nullable_to_non_nullable
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
@@ -162,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String userId,  String name,  AccountType type, @JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson)  double openingBalance, @JsonKey(name: 'is_archived')  bool isArchived, @JsonKey(name: 'is_deleted')  bool isDeleted, @JsonKey(name: 'created_at')  DateTime createdAt, @JsonKey(name: 'updated_at')  DateTime updatedAt, @JsonKey(name: 'is_synced')  bool isSynced)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String userId,  String name,  AccountType type, @JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson)  double initialBalance, @JsonKey(name: 'is_main')  bool isMain, @JsonKey(name: 'is_archived')  bool isArchived, @JsonKey(name: 'is_deleted')  bool isDeleted, @JsonKey(name: 'created_at')  DateTime createdAt, @JsonKey(name: 'updated_at')  DateTime updatedAt, @JsonKey(name: 'is_synced')  bool isSynced)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AccountModel() when $default != null:
-return $default(_that.id,_that.userId,_that.name,_that.type,_that.openingBalance,_that.isArchived,_that.isDeleted,_that.createdAt,_that.updatedAt,_that.isSynced);case _:
+return $default(_that.id,_that.userId,_that.name,_that.type,_that.initialBalance,_that.isMain,_that.isArchived,_that.isDeleted,_that.createdAt,_that.updatedAt,_that.isSynced);case _:
   return orElse();
 
 }
@@ -183,10 +184,10 @@ return $default(_that.id,_that.userId,_that.name,_that.type,_that.openingBalance
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String userId,  String name,  AccountType type, @JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson)  double openingBalance, @JsonKey(name: 'is_archived')  bool isArchived, @JsonKey(name: 'is_deleted')  bool isDeleted, @JsonKey(name: 'created_at')  DateTime createdAt, @JsonKey(name: 'updated_at')  DateTime updatedAt, @JsonKey(name: 'is_synced')  bool isSynced)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id, @JsonKey(name: 'user_id')  String userId,  String name,  AccountType type, @JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson)  double initialBalance, @JsonKey(name: 'is_main')  bool isMain, @JsonKey(name: 'is_archived')  bool isArchived, @JsonKey(name: 'is_deleted')  bool isDeleted, @JsonKey(name: 'created_at')  DateTime createdAt, @JsonKey(name: 'updated_at')  DateTime updatedAt, @JsonKey(name: 'is_synced')  bool isSynced)  $default,) {final _that = this;
 switch (_that) {
 case _AccountModel():
-return $default(_that.id,_that.userId,_that.name,_that.type,_that.openingBalance,_that.isArchived,_that.isDeleted,_that.createdAt,_that.updatedAt,_that.isSynced);case _:
+return $default(_that.id,_that.userId,_that.name,_that.type,_that.initialBalance,_that.isMain,_that.isArchived,_that.isDeleted,_that.createdAt,_that.updatedAt,_that.isSynced);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +204,10 @@ return $default(_that.id,_that.userId,_that.name,_that.type,_that.openingBalance
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'user_id')  String userId,  String name,  AccountType type, @JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson)  double openingBalance, @JsonKey(name: 'is_archived')  bool isArchived, @JsonKey(name: 'is_deleted')  bool isDeleted, @JsonKey(name: 'created_at')  DateTime createdAt, @JsonKey(name: 'updated_at')  DateTime updatedAt, @JsonKey(name: 'is_synced')  bool isSynced)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id, @JsonKey(name: 'user_id')  String userId,  String name,  AccountType type, @JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson)  double initialBalance, @JsonKey(name: 'is_main')  bool isMain, @JsonKey(name: 'is_archived')  bool isArchived, @JsonKey(name: 'is_deleted')  bool isDeleted, @JsonKey(name: 'created_at')  DateTime createdAt, @JsonKey(name: 'updated_at')  DateTime updatedAt, @JsonKey(name: 'is_synced')  bool isSynced)?  $default,) {final _that = this;
 switch (_that) {
 case _AccountModel() when $default != null:
-return $default(_that.id,_that.userId,_that.name,_that.type,_that.openingBalance,_that.isArchived,_that.isDeleted,_that.createdAt,_that.updatedAt,_that.isSynced);case _:
+return $default(_that.id,_that.userId,_that.name,_that.type,_that.initialBalance,_that.isMain,_that.isArchived,_that.isDeleted,_that.createdAt,_that.updatedAt,_that.isSynced);case _:
   return null;
 
 }
@@ -218,14 +219,15 @@ return $default(_that.id,_that.userId,_that.name,_that.type,_that.openingBalance
 @JsonSerializable()
 
 class _AccountModel implements AccountModel {
-  const _AccountModel({required this.id, @JsonKey(name: 'user_id') required this.userId, required this.name, required this.type, @JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson) this.openingBalance = 0, @JsonKey(name: 'is_archived') this.isArchived = false, @JsonKey(name: 'is_deleted') this.isDeleted = false, @JsonKey(name: 'created_at') required this.createdAt, @JsonKey(name: 'updated_at') required this.updatedAt, @JsonKey(name: 'is_synced') this.isSynced = true});
+  const _AccountModel({required this.id, @JsonKey(name: 'user_id') required this.userId, required this.name, required this.type, @JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson) this.initialBalance = 0, @JsonKey(name: 'is_main') this.isMain = false, @JsonKey(name: 'is_archived') this.isArchived = false, @JsonKey(name: 'is_deleted') this.isDeleted = false, @JsonKey(name: 'created_at') required this.createdAt, @JsonKey(name: 'updated_at') required this.updatedAt, @JsonKey(name: 'is_synced') this.isSynced = true});
   factory _AccountModel.fromJson(Map<String, dynamic> json) => _$AccountModelFromJson(json);
 
 @override final  String id;
 @override@JsonKey(name: 'user_id') final  String userId;
 @override final  String name;
 @override final  AccountType type;
-@override@JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson) final  double openingBalance;
+@override@JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson) final  double initialBalance;
+@override@JsonKey(name: 'is_main') final  bool isMain;
 @override@JsonKey(name: 'is_archived') final  bool isArchived;
 @override@JsonKey(name: 'is_deleted') final  bool isDeleted;
 @override@JsonKey(name: 'created_at') final  DateTime createdAt;
@@ -245,16 +247,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AccountModel&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.openingBalance, openingBalance) || other.openingBalance == openingBalance)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.isSynced, isSynced) || other.isSynced == isSynced));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AccountModel&&(identical(other.id, id) || other.id == id)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.initialBalance, initialBalance) || other.initialBalance == initialBalance)&&(identical(other.isMain, isMain) || other.isMain == isMain)&&(identical(other.isArchived, isArchived) || other.isArchived == isArchived)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.isSynced, isSynced) || other.isSynced == isSynced));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,userId,name,type,openingBalance,isArchived,isDeleted,createdAt,updatedAt,isSynced);
+int get hashCode => Object.hash(runtimeType,id,userId,name,type,initialBalance,isMain,isArchived,isDeleted,createdAt,updatedAt,isSynced);
 
 @override
 String toString() {
-  return 'AccountModel(id: $id, userId: $userId, name: $name, type: $type, openingBalance: $openingBalance, isArchived: $isArchived, isDeleted: $isDeleted, createdAt: $createdAt, updatedAt: $updatedAt, isSynced: $isSynced)';
+  return 'AccountModel(id: $id, userId: $userId, name: $name, type: $type, initialBalance: $initialBalance, isMain: $isMain, isArchived: $isArchived, isDeleted: $isDeleted, createdAt: $createdAt, updatedAt: $updatedAt, isSynced: $isSynced)';
 }
 
 
@@ -265,7 +267,7 @@ abstract mixin class _$AccountModelCopyWith<$Res> implements $AccountModelCopyWi
   factory _$AccountModelCopyWith(_AccountModel value, $Res Function(_AccountModel) _then) = __$AccountModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id,@JsonKey(name: 'user_id') String userId, String name, AccountType type,@JsonKey(name: 'opening_balance', fromJson: _amountFromJson, toJson: _amountToJson) double openingBalance,@JsonKey(name: 'is_archived') bool isArchived,@JsonKey(name: 'is_deleted') bool isDeleted,@JsonKey(name: 'created_at') DateTime createdAt,@JsonKey(name: 'updated_at') DateTime updatedAt,@JsonKey(name: 'is_synced') bool isSynced
+ String id,@JsonKey(name: 'user_id') String userId, String name, AccountType type,@JsonKey(name: 'initial_balance', fromJson: _amountFromJson, toJson: _amountToJson) double initialBalance,@JsonKey(name: 'is_main') bool isMain,@JsonKey(name: 'is_archived') bool isArchived,@JsonKey(name: 'is_deleted') bool isDeleted,@JsonKey(name: 'created_at') DateTime createdAt,@JsonKey(name: 'updated_at') DateTime updatedAt,@JsonKey(name: 'is_synced') bool isSynced
 });
 
 
@@ -282,14 +284,15 @@ class __$AccountModelCopyWithImpl<$Res>
 
 /// Create a copy of AccountModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? userId = null,Object? name = null,Object? type = null,Object? openingBalance = null,Object? isArchived = null,Object? isDeleted = null,Object? createdAt = null,Object? updatedAt = null,Object? isSynced = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? userId = null,Object? name = null,Object? type = null,Object? initialBalance = null,Object? isMain = null,Object? isArchived = null,Object? isDeleted = null,Object? createdAt = null,Object? updatedAt = null,Object? isSynced = null,}) {
   return _then(_AccountModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as AccountType,openingBalance: null == openingBalance ? _self.openingBalance : openingBalance // ignore: cast_nullable_to_non_nullable
-as double,isArchived: null == isArchived ? _self.isArchived : isArchived // ignore: cast_nullable_to_non_nullable
+as AccountType,initialBalance: null == initialBalance ? _self.initialBalance : initialBalance // ignore: cast_nullable_to_non_nullable
+as double,isMain: null == isMain ? _self.isMain : isMain // ignore: cast_nullable_to_non_nullable
+as bool,isArchived: null == isArchived ? _self.isArchived : isArchived // ignore: cast_nullable_to_non_nullable
 as bool,isDeleted: null == isDeleted ? _self.isDeleted : isDeleted // ignore: cast_nullable_to_non_nullable
 as bool,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,updatedAt: null == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable

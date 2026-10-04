@@ -104,7 +104,7 @@ void main() {
       await open(tester, (context) async {
         await showAccountPickerSheet(
           context,
-          accounts: [_account('x', 'Jago', AccountType.bank).copyWith(openingBalance: 5000)],
+          accounts: [_account('x', 'Jago', AccountType.bank).copyWith(initialBalance: 5000)],
           balances: const {},
         );
       });

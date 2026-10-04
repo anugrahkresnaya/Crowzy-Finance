@@ -28,66 +28,8 @@ void main() {
         updatedAt: DateTime.utc(2026, 7, 1),
       );
 
-  group('defaultIdFor', () {
-    test('is stable for a user and differs between users', () {
-      expect(AccountRepository.defaultIdFor('u1'), AccountRepository.defaultIdFor('u1'));
-      expect(AccountRepository.defaultIdFor('u1'), isNot(AccountRepository.defaultIdFor('u2')));
-    });
-
-    test('is a version 5 uuid', () {
-      expect(
-        AccountRepository.defaultIdFor('u1'),
-        matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')),
-      );
-    });
-  });
-
-  group('ensureDefault', () {
-    test('creates one unsynced Cash account for the user', () async {
-      final created = await repository.ensureDefault('u1');
-
-      expect(created.id, AccountRepository.defaultIdFor('u1'));
-      expect(created.name, 'Cash');
-      expect(created.type, AccountType.cash);
-      expect(created.openingBalance, 0);
-      expect(created.isSynced, isFalse);
-      expect(repository.getAll(), hasLength(1));
-    });
-
-    test('is stamped with the epoch, so it counts as untouched and leads the list', () async {
-      final created = await repository.ensureDefault('u1');
-      await repository.save(AccountModel(
-        id: 'later',
-        userId: 'u1',
-        name: 'Later',
-        type: AccountType.bank,
-        createdAt: DateTime.utc(2026, 7, 1),
-        updatedAt: DateTime.utc(2026, 7, 1),
-      ));
-
-      expect(created.createdAt, AccountRepository.pristine);
-      expect(created.updatedAt, AccountRepository.pristine);
-      expect(AccountRepository.isPristine(created), isTrue);
-      expect(repository.getAll().first.id, created.id);
-    });
-
-    test('an edit to the default account makes it a real change', () async {
-      final created = await repository.ensureDefault('u1');
-      final edited = created.copyWith(openingBalance: 900000, updatedAt: DateTime.utc(2026, 7, 3));
-
-      expect(AccountRepository.isPristine(edited), isFalse);
-    });
-
-    test('does not replace an existing default, even after it was renamed', () async {
-      final first = await repository.ensureDefault('u1');
-      await repository.save(first.copyWith(name: 'Wallet', openingBalance: 900000));
-
-      final again = await repository.ensureDefault('u1');
-
-      expect(again.name, 'Wallet');
-      expect(again.openingBalance, 900000);
-      expect(repository.getAll(), hasLength(1));
-    });
+  test('there is no account until one is added', () {
+    expect(repository.getAll(), isEmpty);
   });
 
   group('getAll', () {
@@ -101,7 +43,19 @@ void main() {
 
     test('keeps archived accounts, since they still hold money', () async {
       await repository.save(account('a').copyWith(isArchived: true));
+
       expect(repository.getAll().single.isArchived, isTrue);
+    });
+
+    test('keeps the main flag, the initial balance and the e-wallet type as saved', () async {
+      await repository.save(
+        account('a').copyWith(isMain: true, initialBalance: 1850000, type: AccountType.ewallet),
+      );
+
+      final stored = repository.getAll().single;
+      expect(stored.isMain, isTrue);
+      expect(stored.initialBalance, 1850000);
+      expect(stored.type, AccountType.ewallet);
     });
   });
 

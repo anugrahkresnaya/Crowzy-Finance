@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 enum AccountType {
   @JsonValue('bank')
   bank,
-  @JsonValue('ewallet')
+  @JsonValue('e_wallet')
   ewallet,
   @JsonValue('cash')
   cash;

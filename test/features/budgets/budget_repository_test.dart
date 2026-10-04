@@ -41,6 +41,61 @@ void main() {
     });
   });
 
+  group('setLimit reusing a row that already exists', () {
+    BudgetModel remote(String id, {bool deleted = false, String category = 'food', String user = 'u1'}) =>
+        BudgetModel(
+          id: id,
+          userId: user,
+          categoryId: category,
+          monthlyLimit: 500,
+          isDeleted: deleted,
+          createdAt: t1,
+          updatedAt: t1,
+        );
+
+    test('a limit another device created under its own id is updated, not duplicated', () async {
+      await repository.save(remote('server-made'));
+
+      await repository.setLimit(userId: 'u1', categoryId: 'food', limit: 900, now: t2);
+
+      expect(box.length, 1);
+      final budget = repository.forCategory('food')!;
+      expect(budget.id, 'server-made');
+      expect(budget.monthlyLimit, 900);
+      expect(budget.isSynced, isFalse);
+    });
+
+    test('a removed limit under another id is revived rather than a second row made', () async {
+      await repository.save(remote('server-made', deleted: true));
+
+      await repository.setLimit(userId: 'u1', categoryId: 'food', limit: 900, now: t2);
+
+      expect(box.length, 1);
+      expect(repository.forCategory('food')!.id, 'server-made');
+      expect(repository.forCategory('food')!.isDeleted, isFalse);
+    });
+
+    test('an active row wins over a removed one for the same category', () async {
+      await repository.save(remote('old', deleted: true));
+      await repository.save(remote('live'));
+
+      await repository.setLimit(userId: 'u1', categoryId: 'food', limit: 900, now: t2);
+
+      expect(repository.forCategory('food')!.id, 'live');
+      expect(Map<String, dynamic>.from(box.get('old')!)['is_deleted'], isTrue);
+    });
+
+    test('a limit for another category or another user does not get in the way', () async {
+      await repository.save(remote('dining-row', category: 'dining'));
+      await repository.save(remote('their-row', user: 'u2'));
+
+      await repository.setLimit(userId: 'u1', categoryId: 'food', limit: 900, now: t2);
+
+      expect(repository.forCategory('food')!.id, BudgetRepository.idFor('u1', 'food'));
+      expect(box.length, 3);
+    });
+  });
+
   group('setLimit', () {
     test('creates an unsynced budget under the derived id', () async {
       await repository.setLimit(userId: 'u1', categoryId: 'food', limit: 2000000, now: t1);

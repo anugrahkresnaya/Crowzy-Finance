@@ -8,12 +8,14 @@ part of 'balance_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Current balance of every account, by account id.
+/// Current balance of every account, by account id, plus the money on no
+/// account under [unassignedAccountId] when there is any.
 
 @ProviderFor(accountBalanceMap)
 final accountBalanceMapProvider = AccountBalanceMapProvider._();
 
-/// Current balance of every account, by account id.
+/// Current balance of every account, by account id, plus the money on no
+/// account under [unassignedAccountId] when there is any.
 
 final class AccountBalanceMapProvider
     extends
@@ -23,7 +25,8 @@ final class AccountBalanceMapProvider
           Map<String, double>
         >
     with $Provider<Map<String, double>> {
-  /// Current balance of every account, by account id.
+  /// Current balance of every account, by account id, plus the money on no
+  /// account under [unassignedAccountId] when there is any.
   AccountBalanceMapProvider._()
     : super(
         from: null,
@@ -58,7 +61,7 @@ final class AccountBalanceMapProvider
   }
 }
 
-String _$accountBalanceMapHash() => r'59b7ff47871d7880a955c7e2a4eec61ba301aa6d';
+String _$accountBalanceMapHash() => r'c24152e76a6a47e85a17d9e17fbe76d8f70eeed5';
 
 /// Entries on each account this month, for the Accounts list subtitles.
 
@@ -110,4 +113,4 @@ final class AccountEntriesThisMonthProvider
 }
 
 String _$accountEntriesThisMonthHash() =>
-    r'622c74f50e6066dc1931a48589c94e923cf48b84';
+    r'dc08421b27c8f466886af0afb8ca62928bc5dcba';

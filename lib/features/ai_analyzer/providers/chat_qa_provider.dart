@@ -25,7 +25,7 @@ abstract class ChatQaState with _$ChatQaState {
 
 @riverpod
 Map<String, dynamic> chatContext(Ref ref) {
-  final transactions = ref.watch(transactionListProvider).value ?? const [];
+  final transactions = ref.watch(spendingTransactionsProvider);
   final categories = ref.watch(categoryListProvider).value ?? const [];
   final wishlists = ref.watch(wishlistListProvider).value ?? const [];
   final balance = ref.watch(allTimeBalanceProvider);
@@ -116,10 +116,8 @@ class ChatQa extends _$ChatQa {
       }
       if (!intent.isCorrection) return const CorrectionOutcome.notCorrection();
 
-      // A transfer's fee is changed through its transfer, not by a correction.
-      final transactions = (ref.read(transactionListProvider).value ?? const [])
-          .where((t) => t.transferId == null)
-          .toList();
+      // The legs of a transfer are not something a correction can mean.
+      final transactions = ref.read(spendingTransactionsProvider);
       final categories = ref.read(categoryListProvider).value ?? const [];
       final candidates = matchCorrectionCandidates(
         intent: intent,

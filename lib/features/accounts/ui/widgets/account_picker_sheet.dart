@@ -60,7 +60,7 @@ class _AccountPickerSheet extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _AccountOption(
                   account: account,
-                  balance: balances[account.id] ?? account.openingBalance,
+                  balance: balances[account.id] ?? account.initialBalance,
                   selected: account.id == selectedId,
                   onTap: () => Navigator.of(context).pop(account),
                 ),

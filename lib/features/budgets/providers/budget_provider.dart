@@ -52,13 +52,13 @@ Map<String, double> categoryLimits(Ref ref) {
 /// This month's spending by category id.
 @riverpod
 Map<String, double> categorySpendThisMonth(Ref ref) {
-  final transactions = ref.watch(transactionListProvider).value ?? const [];
+  final transactions = ref.watch(spendingTransactionsProvider);
   return totalsByCategory(transactions, DateTime.now());
 }
 
 /// This month's income by category id.
 @riverpod
 Map<String, double> categoryEarnedThisMonth(Ref ref) {
-  final transactions = ref.watch(transactionListProvider).value ?? const [];
+  final transactions = ref.watch(spendingTransactionsProvider);
   return totalsByCategory(transactions, DateTime.now(), type: TransactionType.income);
 }

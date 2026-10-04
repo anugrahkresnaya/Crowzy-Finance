@@ -149,8 +149,14 @@ abstract class _$CategoryList extends $AsyncNotifier<List<CategoryModel>> {
   }
 }
 
+/// Categories a person can file a transaction under. Transfer In and Transfer
+/// Out are left out: only a transfer is recorded in them.
+
 @ProviderFor(incomeCategories)
 final incomeCategoriesProvider = IncomeCategoriesProvider._();
+
+/// Categories a person can file a transaction under. Transfer In and Transfer
+/// Out are left out: only a transfer is recorded in them.
 
 final class IncomeCategoriesProvider
     extends
@@ -160,6 +166,8 @@ final class IncomeCategoriesProvider
           List<CategoryModel>
         >
     with $Provider<List<CategoryModel>> {
+  /// Categories a person can file a transaction under. Transfer In and Transfer
+  /// Out are left out: only a transfer is recorded in them.
   IncomeCategoriesProvider._()
     : super(
         from: null,
@@ -194,7 +202,7 @@ final class IncomeCategoriesProvider
   }
 }
 
-String _$incomeCategoriesHash() => r'f8bf9e627207e0dfb24295391c60d5698da70827';
+String _$incomeCategoriesHash() => r'd70f69d33c8300c39e2f4ccc80b3c3e9e3c71f0a';
 
 @ProviderFor(expenseCategories)
 final expenseCategoriesProvider = ExpenseCategoriesProvider._();
@@ -241,4 +249,4 @@ final class ExpenseCategoriesProvider
   }
 }
 
-String _$expenseCategoriesHash() => r'd107bd289953abc400df4f947db539383cd906be';
+String _$expenseCategoriesHash() => r'ffd9dbe7c5eadbbc041e8389d7257a133a2e36e9';

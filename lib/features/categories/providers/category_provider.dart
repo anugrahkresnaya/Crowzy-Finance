@@ -94,14 +94,20 @@ class CategoryList extends _$CategoryList {
   }
 }
 
+/// Categories a person can file a transaction under. Transfer In and Transfer
+/// Out are left out: only a transfer is recorded in them.
 @riverpod
 List<CategoryModel> incomeCategories(Ref ref) {
   final categories = ref.watch(categoryListProvider).value ?? const [];
-  return categories.where((c) => c.type == TransactionType.income).toList();
+  return categories
+      .where((c) => c.type == TransactionType.income && !DefaultCategories.isTransferCategory(c.id))
+      .toList();
 }
 
 @riverpod
 List<CategoryModel> expenseCategories(Ref ref) {
   final categories = ref.watch(categoryListProvider).value ?? const [];
-  return categories.where((c) => c.type == TransactionType.expense).toList();
+  return categories
+      .where((c) => c.type == TransactionType.expense && !DefaultCategories.isTransferCategory(c.id))
+      .toList();
 }

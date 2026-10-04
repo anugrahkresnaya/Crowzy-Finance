@@ -1,9 +1,10 @@
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/features/transactions/utils/activity_feed.dart';
 import 'package:crowzy_finance/features/transactions/utils/transaction_sort.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/transfers.dart';
 
 void main() {
   ActivityEntry tx(String id, double amount, DateTime date) => TransactionEntry(TransactionModel(
@@ -50,17 +51,9 @@ void main() {
   });
 
   test('transfers sort alongside transactions, by their amount', () {
-    final transfer = TransferEntry(TransferModel(
-      id: 'tr',
-      userId: 'u1',
-      fromAccountId: 'x',
-      toAccountId: 'y',
-      amount: 120,
-      fee: 9999, // the fee is its own expense and does not count here
-      date: DateTime(2026, 7, 2),
-      createdAt: DateTime(2026, 7, 1),
-      updatedAt: DateTime(2026, 7, 1),
-    ));
+    final transfer = TransferEntry(
+      fakeTransfer('tr', amount: 120, fee: 9999, date: DateTime(2026, 7, 2)),
+    );
     final mixed = [...input, transfer];
 
     expect(ids(TransactionSort.highestAmount, mixed), ['b', 'tr', 'a', 'c']);
@@ -69,16 +62,7 @@ void main() {
 
   test('a transfer ranks before a transaction from the same moment, in either date order', () {
     final moment = DateTime(2026, 7, 4);
-    final transfer = TransferEntry(TransferModel(
-      id: 'tr',
-      userId: 'u1',
-      fromAccountId: 'x',
-      toAccountId: 'y',
-      amount: 1,
-      date: moment,
-      createdAt: moment,
-      updatedAt: moment,
-    ));
+    final transfer = TransferEntry(fakeTransfer('tr', amount: 1, date: moment));
     final same = [tx('same', 1, moment), transfer];
 
     expect(ids(TransactionSort.newest, same), ['tr', 'same']);

@@ -5,9 +5,8 @@ import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
-import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
 import 'package:crowzy_finance/features/transactions/ui/transaction_list_screen.dart';
@@ -16,14 +15,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../support/transfers.dart';
+
 late List<TransactionModel> _seed;
-List<TransferModel> _transferSeed = [];
-
-class _FakeTransfers extends TransferList {
-  @override
-  Future<List<TransferModel>> build() async => _transferSeed;
-}
-
 class _FakeAccounts extends AccountList {
   @override
   Future<List<AccountModel>> build() async => [
@@ -89,7 +83,7 @@ void main() {
         updatedAt: date,
       );
 
-  TransferModel transfer(
+  Transfer transfer(
     String id,
     DateTime date, {
     double amount = 500000,
@@ -98,26 +92,21 @@ void main() {
     String to = 'dana',
     String? note,
   }) =>
-      TransferModel(
-        id: id,
-        userId: 'u1',
-        fromAccountId: from,
-        toAccountId: to,
-        amount: amount,
-        fee: fee,
-        note: note,
-        date: date,
-        createdAt: date,
-        updatedAt: date,
-      );
+      fakeTransfer(id, from: from, to: to, amount: amount, fee: fee, date: date, note: note);
 
   Future<void> pump(
     WidgetTester tester,
     List<TransactionModel> transactions, {
-    List<TransferModel> transfers = const [],
+    List<Transfer> transfers = const [],
   }) async {
-    _seed = transactions;
-    _transferSeed = transfers;
+    // A transfer is stored as its two legs (and its fee), like on the server.
+    _seed = [
+      ...transactions,
+      for (final t in transfers) ...[
+        ...legsOf(t),
+        if (t.fee > 0) feeOf(t, categoryId: 'food').copyWith(accountId: t.fromAccountId),
+      ],
+    ];
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -127,8 +116,7 @@ void main() {
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
           accountListProvider.overrideWith(_FakeAccounts.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          mainAccountIdProvider.overrideWithValue(null),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: const TransactionListScreen()),
       ),
@@ -238,7 +226,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TODAY'), findsNothing);
-    expect(find.text('Today · Food · Cash'), findsNWidgets(2));
+    expect(find.text('Today · Food'), findsNWidgets(2)); // no account, so none is named
     expect(
       tester.getTopLeft(find.text('Big')).dy,
       lessThan(tester.getTopLeft(find.text('Small')).dy),
@@ -262,7 +250,6 @@ void main() {
 
   testWidgets('can open on a given month', (tester) async {
     _seed = [tx('then', DateTime(2020, 5, 5), note: 'Long ago')];
-    _transferSeed = [];
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -272,8 +259,7 @@ void main() {
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
           accountListProvider.overrideWith(_FakeAccounts.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          mainAccountIdProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
           theme: AppTheme.dark,
@@ -325,22 +311,9 @@ void main() {
     });
 
     testWidgets('the fee is a normal expense row, named for its route, and the day total includes it', (tester) async {
-      final fee = TransactionModel(
-        id: 'fee',
-        userId: 'u1',
-        amount: 2500,
-        type: TransactionType.expense,
-        categoryId: 'food',
-        note: 'Transfer fee',
-        accountId: 'bca',
-        transferId: 't',
-        date: yesterday,
-        createdAt: yesterday,
-        updatedAt: yesterday,
-      );
       await pump(
         tester,
-        [tx('lunch', yesterday, amount: 68000, note: 'Lunch'), fee],
+        [tx('lunch', yesterday, amount: 68000, note: 'Lunch')],
         transfers: [transfer('t', yesterday, fee: 2500, note: 'Top up DANA')],
       );
 
@@ -349,7 +322,7 @@ void main() {
       expect(find.text('−70.500'), findsOneWidget); // day total
     });
 
-    testWidgets('a transaction names its account, the default one when it has none', (tester) async {
+    testWidgets('a transaction names its account, and says nothing for one on no account', (tester) async {
       await pump(tester, [
         tx('a', today, note: 'Lunch'),
         TransactionModel(
@@ -366,8 +339,8 @@ void main() {
         ),
       ]);
 
-      expect(find.text('Food · Cash'), findsOneWidget);
       expect(find.text('Food · DANA'), findsOneWidget);
+      expect(find.text('Food'), findsOneWidget); // Lunch, on no account
     });
 
     testWidgets('the Transfers chip shows only transfers', (tester) async {
@@ -446,20 +419,7 @@ void main() {
     });
 
     testWidgets('tapping a transfer fee opens the transfer receipt, not a transaction one', (tester) async {
-      final fee = TransactionModel(
-        id: 'fee',
-        userId: 'u1',
-        amount: 2500,
-        type: TransactionType.expense,
-        categoryId: 'food',
-        note: 'Transfer fee',
-        accountId: 'bca',
-        transferId: 't',
-        date: today,
-        createdAt: today,
-        updatedAt: today,
-      );
-      await pump(tester, [fee], transfers: [transfer('t', today, fee: 2500, note: 'Top up DANA')]);
+      await pump(tester, const [], transfers: [transfer('t', today, fee: 2500, note: 'Top up DANA')]);
 
       await tester.tap(find.text('Transfer fee'));
       await tester.pumpAndSettle();

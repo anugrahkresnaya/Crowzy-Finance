@@ -1,34 +1,33 @@
 import 'package:crowzy_finance/core/theme/app_colors.dart';
 import 'package:crowzy_finance/core/theme/app_theme.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/accounts/ui/widgets/transfer_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../support/transfers.dart';
 
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   final now = DateTime.now();
 
-  TransferModel transfer({String? note = 'Top up DANA', DateTime? date}) => TransferModel(
-        id: 't1',
-        userId: 'u1',
-        fromAccountId: 'a',
-        toAccountId: 'b',
+  Transfer transfer({String? note = 'Top up DANA', DateTime? date}) => fakeTransfer(
+        't1',
+        from: 'a',
+        to: 'b',
         amount: 500000,
         fee: 2500,
         note: note,
         date: date ?? now,
-        createdAt: now,
-        updatedAt: now,
       );
 
   Future<void> pump(WidgetTester tester, TransferTile tile) => tester.pumpWidget(
         MaterialApp(theme: AppTheme.dark, home: Scaffold(body: tile)),
       );
 
-  TransferTile tile(TransferModel t, {bool showDate = true, VoidCallback? onTap}) => TransferTile(
+  TransferTile tile(Transfer t, {bool showDate = true, VoidCallback? onTap}) => TransferTile(
         transfer: t,
         fromName: 'BCA',
         toName: 'DANA',

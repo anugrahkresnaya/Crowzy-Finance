@@ -1,13 +1,10 @@
-import 'package:crowzy_finance/core/constants/default_categories.dart';
 import 'package:crowzy_finance/core/theme/app_theme.dart';
 import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
-import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
 import 'package:crowzy_finance/features/transactions/ui/add_edit_transaction_screen.dart';
@@ -61,11 +58,6 @@ class _FakeAccounts extends AccountList {
   Future<List<AccountModel>> build() async => _accounts;
 }
 
-class _FakeTransfers extends TransferList {
-  @override
-  Future<List<TransferModel>> build() async => const [];
-}
-
 AccountModel _account(String id, String name, int order,
         {AccountType type = AccountType.bank, bool archived = false}) =>
     AccountModel(
@@ -83,7 +75,8 @@ class _FakeCategories extends CategoryList {
   Future<List<CategoryModel>> build() async => [
         _cat('food', 'Food', TransactionType.expense),
         _cat('transport', 'Transport', TransactionType.expense),
-        _cat(DefaultCategories.feesId, 'Fees', TransactionType.expense),
+        _cat('00000000-0000-4000-8000-000000000014', 'Transfer Out', TransactionType.expense),
+        _cat('00000000-0000-4000-8000-000000000013', 'Transfer In', TransactionType.income),
         _cat('salary', 'Salary', TransactionType.income),
       ];
 }
@@ -113,6 +106,7 @@ void main() {
     TransactionModel? transaction,
     String? initialAccountId,
     String? lastUsedAccount,
+    String? mainAccount,
     TransactionType initialType = TransactionType.expense,
   }) async {
     await tester.binding.setSurfaceSize(const Size(390, 1100));
@@ -126,8 +120,7 @@ void main() {
           lastUsedCategoryIdProvider.overrideWith((ref, type) => null),
           lastUsedAccountIdProvider.overrideWithValue(lastUsedAccount),
           accountListProvider.overrideWith(_FakeAccounts.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          mainAccountIdProvider.overrideWithValue(mainAccount),
         ],
         child: MaterialApp(
           theme: AppTheme.dark,
@@ -156,10 +149,10 @@ void main() {
     expect(find.text('Describe it in words instead'), findsOneWidget);
   });
 
-  testWidgets('does not offer the Fees category, which only a transfer records into', (tester) async {
+  testWidgets('does not offer the transfer categories, which only a transfer records into', (tester) async {
     await pump(tester);
 
-    expect(find.text('Fees'), findsNothing);
+    expect(find.text('Transfer Out'), findsNothing);
     expect(find.text('Food'), findsOneWidget);
   });
 
@@ -273,7 +266,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('a new transaction has an Account row, first in the card, on Cash by default', (tester) async {
+    testWidgets('a new transaction has an Account row, first in the card, on the first account by default', (tester) async {
       await pump(tester);
 
       expect(find.text('Account'), findsOneWidget);
@@ -284,22 +277,28 @@ void main() {
       );
     });
 
-    testWidgets('starts on the account last used', (tester) async {
+    testWidgets('starts on the main account, ahead of the last used one', (tester) async {
+      await pump(tester, mainAccount: 'bca', lastUsedAccount: 'dana');
+
+      expect(find.text('BCA'), findsOneWidget);
+    });
+
+    testWidgets('starts on the account last used when there is no main one', (tester) async {
       await pump(tester, lastUsedAccount: 'dana');
 
       expect(find.text('DANA'), findsOneWidget);
       expect(find.text('Cash'), findsNothing);
     });
 
-    testWidgets('starts on the account it was opened from, ahead of the last used one', (tester) async {
-      await pump(tester, initialAccountId: 'bca', lastUsedAccount: 'dana');
+    testWidgets('starts on the account it was opened from, ahead of the main and last used ones', (tester) async {
+      await pump(tester, initialAccountId: 'bca', mainAccount: 'dana', lastUsedAccount: 'cash');
 
       expect(find.text('BCA'), findsOneWidget);
     });
 
-    testWidgets('a last used account that is archived is not used', (tester) async {
+    testWidgets('a main or last used account that is archived is not used', (tester) async {
       _accounts = [..._accounts, _account('old', 'Old card', 3, archived: true)];
-      await pump(tester, lastUsedAccount: 'old');
+      await pump(tester, mainAccount: 'old', lastUsedAccount: 'old');
 
       expect(find.text('Old card'), findsNothing);
       expect(find.text('Cash'), findsOneWidget);
@@ -324,14 +323,21 @@ void main() {
       expect(_saved.accountId, 'bca');
     });
 
-    testWidgets('the default account is saved when nothing else is chosen', (tester) async {
+    testWidgets('with no account at all the row says None, cannot be opened, and the transaction is saved on none', (tester) async {
+      _accounts = [];
       await pump(tester);
+
+      expect(find.text('None'), findsOneWidget);
+      await tester.tap(find.text('Account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Choose an account'), findsNothing);
 
       await tester.enterText(find.byType(TextFormField).first, '5000');
       await tester.tap(find.text('Save transaction'));
       await tester.pumpAndSettle();
 
-      expect(_saved.accountId, 'cash');
+      expect(_saved.amount, 5000);
+      expect(_saved.accountId, isNull);
     });
 
     testWidgets('editing shows the transaction\'s own account and can move it', (tester) async {
@@ -356,7 +362,7 @@ void main() {
       expect(_saved.updated?.accountId, 'bca');
     });
 
-    testWidgets('an older transaction with no account shows, and keeps, the default one', (tester) async {
+    testWidgets('an older transaction on no account shows None and is not given one by editing', (tester) async {
       final existing = TransactionModel(
         id: 't1',
         userId: 'u1',
@@ -367,13 +373,13 @@ void main() {
         createdAt: DateTime(2026, 10, 1),
         updatedAt: DateTime(2026, 10, 1),
       );
-      await pump(tester, transaction: existing, lastUsedAccount: 'bca');
+      await pump(tester, transaction: existing, mainAccount: 'bca', lastUsedAccount: 'bca');
 
-      expect(find.text('Cash'), findsOneWidget); // not the last used account
+      expect(find.text('None'), findsOneWidget);
       await tester.tap(find.text('Save changes'));
       await tester.pumpAndSettle();
 
-      expect(_saved.updated?.accountId, 'cash');
+      expect(_saved.updated?.accountId, isNull);
     });
 
     testWidgets('a transaction on an archived account still shows it and offers it in the picker', (tester) async {

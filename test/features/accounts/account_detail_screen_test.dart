@@ -5,10 +5,11 @@ import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
 import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/accounts/ui/account_detail_screen.dart';
+import 'package:crowzy_finance/features/accounts/utils/account_balance.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
 import 'package:flutter/material.dart';
@@ -16,13 +17,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../support/transfers.dart';
+
 final _now = DateTime.now();
 final _today = DateTime(_now.year, _now.month, _now.day, 12);
 final _yesterday = _today.subtract(const Duration(days: 1));
 
 late List<AccountModel> _accounts;
 late List<TransactionModel> _transactions;
-late List<TransferModel> _transfers;
+late List<Transfer> _transfers;
 
 class _FakeAccounts extends AccountList {
   @override
@@ -31,12 +34,14 @@ class _FakeAccounts extends AccountList {
 
 class _FakeTransactions extends TransactionList {
   @override
-  Future<List<TransactionModel>> build() async => _transactions;
-}
-
-class _FakeTransfers extends TransferList {
-  @override
-  Future<List<TransferModel>> build() async => _transfers;
+  Future<List<TransactionModel>> build() async => [
+        ..._transactions,
+        // A transfer is stored as its two legs, and its fee as an ordinary expense.
+        for (final t in _transfers) ...[
+          ...legsOf(t),
+          if (t.fee > 0) feeOf(t, categoryId: 'fees'),
+        ],
+      ];
 }
 
 class _FakeCategories extends CategoryList {
@@ -68,7 +73,7 @@ AccountModel _account(String id, String name, AccountType type, double opening, 
       userId: 'u1',
       name: name,
       type: type,
-      openingBalance: opening,
+      initialBalance: opening,
       createdAt: DateTime(2026, 1, 1, 0, order),
       updatedAt: DateTime(2026),
     );
@@ -81,7 +86,6 @@ TransactionModel _tx(
   String? note,
   String category = 'food',
   bool income = false,
-  String? transferId,
 }) =>
     TransactionModel(
       id: id,
@@ -91,26 +95,14 @@ TransactionModel _tx(
       categoryId: category,
       note: note,
       accountId: accountId,
-      transferId: transferId,
       date: date,
       createdAt: date,
       updatedAt: date,
     );
 
-TransferModel _transfer(String id, DateTime date, String from, String to,
+Transfer _transfer(String id, DateTime date, String from, String to,
         {double amount = 500000, double fee = 0, String? note}) =>
-    TransferModel(
-      id: id,
-      userId: 'u1',
-      fromAccountId: from,
-      toAccountId: to,
-      amount: amount,
-      fee: fee,
-      note: note,
-      date: date,
-      createdAt: date,
-      updatedAt: date,
-    );
+    fakeTransfer(id, from: from, to: to, amount: amount, fee: fee, note: note, date: date);
 
 void main() {
   setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
@@ -134,9 +126,8 @@ void main() {
         overrides: [
           accountListProvider.overrideWith(_FakeAccounts.new),
           transactionListProvider.overrideWith(_FakeTransactions.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          mainAccountIdProvider.overrideWithValue(null),
           lastTransferSourceProvider.overrideWithValue(_NoMemory()),
           lastUsedAccountIdProvider.overrideWithValue(null),
           lastUsedCategoryIdProvider.overrideWith((ref, type) => null),
@@ -176,7 +167,6 @@ void main() {
     });
 
     testWidgets('the balance follows transfers in and out, and the fee', (tester) async {
-      _transactions = [_tx('fee', _today, 2500, accountId: 'bca', transferId: 't', note: 'Transfer fee')];
       _transfers = [_transfer('t', _today, 'bca', 'dana', fee: 2500)];
       await pump(tester);
 
@@ -210,15 +200,27 @@ void main() {
       expect(find.text('Food'), findsOneWidget); // the line beneath, with no account named
     });
 
-    testWidgets('the default account also holds transactions that have no account', (tester) async {
+    testWidgets('transactions on no account are on the Unassigned page, not on any account\'s', (tester) async {
       _transactions = [_tx('legacy', _today, 1000, note: 'Old habit')];
 
-      await pump(tester, id: 'cash');
+      await pump(tester, id: unassignedAccountId);
+      expect(find.text('NO ACCOUNT'), findsOneWidget);
+      expect(find.text('Unassigned'), findsOneWidget);
       expect(find.text('Old habit'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox());
-      await pump(tester);
+      await pump(tester, id: 'cash');
       expect(find.text('Old habit'), findsNothing);
+    });
+
+    testWidgets('the Unassigned page has its balance but nothing to edit, transfer or add to', (tester) async {
+      _transactions = [_tx('legacy', _today, 1000, note: 'Old habit')];
+      await pump(tester, id: unassignedAccountId);
+
+      expect(find.text('−1.000'), findsWidgets);
+      expect(find.byTooltip('Edit account'), findsNothing);
+      expect(find.text('Transfer'), findsNothing);
+      expect(find.text('Add transaction'), findsNothing);
     });
 
     testWidgets('shows the month in capitals and the filter chips', (tester) async {
@@ -248,9 +250,6 @@ void main() {
     });
 
     testWidgets('the fee row names the route of its transfer', (tester) async {
-      _transactions = [
-        _tx('fee', _yesterday, 2500, accountId: 'bca', note: 'Transfer fee', category: 'fees', transferId: 't'),
-      ];
       _transfers = [_transfer('t', _yesterday, 'bca', 'dana', fee: 2500, note: 'Top up DANA')];
       await pump(tester);
 

@@ -250,7 +250,7 @@ final class CategorySpendThisMonthProvider
 }
 
 String _$categorySpendThisMonthHash() =>
-    r'adb034f36105f36c0640d97cd7d6da177b65eba7';
+    r'db37f7b1e9584a478ed3dba25bb8b4149583058e';
 
 /// This month's income by category id.
 
@@ -303,4 +303,4 @@ final class CategoryEarnedThisMonthProvider
 }
 
 String _$categoryEarnedThisMonthHash() =>
-    r'68fc535c8418438f429c3f651fbd761fddaa3ab5';
+    r'c392f78ea6777dfaab1f71bcaed2f9c52cee1157';

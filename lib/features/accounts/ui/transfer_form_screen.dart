@@ -14,7 +14,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/amount_field.dart';
 import '../../../core/widgets/form_card.dart';
 import '../../../data/models/account_model.dart';
-import '../../../data/models/transfer_model.dart';
+import '../../../data/models/transfer.dart';
 import '../../transactions/providers/transaction_provider.dart';
 import '../providers/account_provider.dart';
 import '../providers/transfer_provider.dart';
@@ -28,7 +28,7 @@ import 'widgets/account_picker_sheet.dart';
 class TransferFormScreen extends ConsumerStatefulWidget {
   const TransferFormScreen({super.key, this.transfer, this.initialFromAccountId});
 
-  final TransferModel? transfer;
+  final Transfer? transfer;
 
   /// Source chosen when starting a new transfer from one account's page.
   final String? initialFromAccountId;
@@ -59,6 +59,7 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen>
   late String? _toId = widget.transfer?.toAccountId;
   bool _defaultsChosen = false;
   double _turns = 0;
+  bool _saving = false;
 
   bool get _isEditing => widget.transfer != null;
 
@@ -83,14 +84,19 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen>
   double get _amount => ThousandsInputFormatter.parse(_amountController.text) ?? 0;
   double get _fee => ThousandsInputFormatter.parse(_feeController.text) ?? 0;
 
-  /// A new transfer starts from the account last used as a source and goes to
-  /// the first other active account.
+  /// A new transfer starts from the main account, else the one last used as a
+  /// source, else the first; it goes to the first other active account.
   void _chooseDefaults(List<AccountModel> active) {
     if (_defaultsChosen || _isEditing || active.isEmpty) return;
     _defaultsChosen = true;
 
+    final main = ref.read(mainAccountIdProvider);
     final remembered = ref.read(lastTransferSourceProvider).value;
-    _fromId ??= active.any((a) => a.id == remembered) ? remembered : active.first.id;
+    _fromId ??= active.any((a) => a.id == main)
+        ? main
+        : active.any((a) => a.id == remembered)
+            ? remembered
+            : active.first.id;
     if (!active.any((a) => a.id == _fromId)) _fromId = active.first.id;
     _toId ??= active.where((a) => a.id != _fromId).firstOrNull?.id;
   }
@@ -151,29 +157,39 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen>
     if (fromId == toId) return;
 
     final note = _noteController.text.trim();
-    final notifier = ref.read(transferListProvider.notifier);
+    final actions = ref.read(transferActionsProvider);
     final existing = widget.transfer;
 
-    if (existing == null) {
-      await notifier.addTransfer(
-        fromAccountId: fromId,
-        toAccountId: toId,
-        amount: _amount,
-        fee: _fee,
-        date: _date,
-        note: note.isEmpty ? null : note,
-      );
-    } else {
-      await notifier.updateTransfer(
-        existing.copyWith(
+    setState(() => _saving = true);
+    try {
+      if (existing == null) {
+        await actions.create(
           fromAccountId: fromId,
           toAccountId: toId,
           amount: _amount,
           fee: _fee,
           date: _date,
           note: note.isEmpty ? null : note,
-        ),
-      );
+        );
+      } else {
+        await actions.update(
+          existing,
+          fromAccountId: fromId,
+          toAccountId: toId,
+          amount: _amount,
+          fee: _fee,
+          date: _date,
+          note: note.isEmpty ? null : note,
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save transfer: $error')),
+        );
+      }
+      return;
     }
     // Best effort: remembering the source must never hold up closing the form.
     unawaited(ref.read(lastTransferSourceProvider).save(fromId));
@@ -190,32 +206,25 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen>
       message: 'This also removes its fee entry and puts the money back.',
     );
     if (!confirmed || !mounted) return;
-    await ref.read(transferListProvider.notifier).deleteTransfer(existing.id);
+    await ref.read(transferActionsProvider).delete(existing);
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AsyncValue<List<TransferModel>>>(transferListProvider, (previous, next) {
-      next.whenOrNull(
-        error: (error, _) => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save transfer: $error')),
-        ),
-      );
-    });
-
     final accounts = ref.watch(accountListProvider).value ?? const <AccountModel>[];
     final active = accounts.where((a) => !a.isArchived).toList();
     _chooseDefaults(active);
 
     // Balances as they stood before this transfer, so an edit does not count
-    // itself twice.
+    // itself twice: its two legs and its fee are left out.
+    final editing = widget.transfer;
     final balances = accountBalances(
       accounts: accounts,
       transactions: ref.watch(transactionListProvider).value ?? const [],
-      transfers: ref.watch(transferListProvider).value ?? const [],
-      defaultAccountId: ref.watch(defaultAccountIdProvider),
-      excludingTransferId: widget.transfer?.id,
+      excludingTransactionIds: {
+        if (editing != null) ...[editing.outLegId, editing.inLegId, ?editing.feeId],
+      },
     );
 
     AccountModel? byId(String? id) => accounts.where((a) => a.id == id).firstOrNull;
@@ -230,7 +239,7 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen>
       sameAccount: sameAccount,
     );
 
-    final isLoading = ref.watch(transferListProvider).isLoading;
+    final isLoading = _saving;
     final textTheme = Theme.of(context).textTheme;
     final canSave = !isLoading && !sameAccount;
 
@@ -301,7 +310,7 @@ class _TransferFormScreenState extends ConsumerState<TransferFormScreen>
                       ? 'Saving also updates this transfer’s fee entry in Activity. Deleting '
                           'removes both and puts the money back.'
                       : 'The fee leaves ${from?.name ?? 'the source account'} and is counted as '
-                          'an expense under Fees. The transfer itself is not.',
+                          'an expense under Admin Fee. The transfer itself is not.',
                   style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted, height: 1.5),
                 ),
               ),

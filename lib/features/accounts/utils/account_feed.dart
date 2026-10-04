@@ -1,19 +1,22 @@
 import '../../transactions/utils/activity_feed.dart';
+import 'account_balance.dart';
 
 /// The entries that belong on one account's page: its own transactions
 /// (including the fee of a transfer that left it) and every transfer it took
-/// part in. A transaction with no account belongs to [defaultAccountId].
+/// part in. Pass [unassignedAccountId] for the transactions on no account.
 List<ActivityEntry> entriesForAccount(
   Iterable<ActivityEntry> entries, {
   required String accountId,
-  required String? defaultAccountId,
 }) {
+  final unassigned = accountId == unassignedAccountId;
+
   return entries.where((entry) {
     switch (entry) {
       case TransactionEntry(:final transaction):
-        return (transaction.accountId ?? defaultAccountId) == accountId;
+        return unassigned ? transaction.accountId == null : transaction.accountId == accountId;
       case TransferEntry(:final transfer):
-        return transfer.fromAccountId == accountId || transfer.toAccountId == accountId;
+        return !unassigned &&
+            (transfer.fromAccountId == accountId || transfer.toAccountId == accountId);
     }
   }).toList();
 }

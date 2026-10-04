@@ -9,7 +9,6 @@ import '../../../core/widgets/balance_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
 import '../../../data/models/account_model.dart';
-import '../../../data/models/transfer_model.dart';
 import '../../accounts/providers/account_provider.dart';
 import '../../accounts/providers/transfer_provider.dart';
 import '../../accounts/ui/accounts_screen.dart';
@@ -46,9 +45,7 @@ class HomeScreen extends ConsumerWidget {
     final allAccounts = ref.watch(accountListProvider).value ?? const <AccountModel>[];
     final accounts = allAccounts.where((a) => !a.isArchived).toList();
     final accountNames = {for (final a in allAccounts) a.id: a.name};
-    final transfersById = {
-      for (final t in ref.watch(transferListProvider).value ?? const <TransferModel>[]) t.id: t,
-    };
+    final feeTransfers = ref.watch(feeTransfersProvider);
     final goal = activeGoals.isEmpty ? null : activeGoals.first;
     final hasNotice = unreadAlerts.isNotEmpty;
 
@@ -129,8 +126,7 @@ class HomeScreen extends ConsumerWidget {
                       entry: entry,
                       categoryById: categoryById,
                       accountNames: accountNames,
-                      transfersById: transfersById,
-                      defaultAccountId: ref.watch(defaultAccountIdProvider),
+                      feeTransfers: feeTransfers,
                     ).entrance(context, index: index, axis: Axis.horizontal),
                   );
                 },

@@ -8,12 +8,16 @@ part of 'activity_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Every transaction and transfer as one list, newest first.
+/// Every transaction and transfer as one list, newest first. A transfer's two
+/// legs show as the one transfer; a leg whose partner is missing stays an
+/// ordinary row.
 
 @ProviderFor(activityEntries)
 final activityEntriesProvider = ActivityEntriesProvider._();
 
-/// Every transaction and transfer as one list, newest first.
+/// Every transaction and transfer as one list, newest first. A transfer's two
+/// legs show as the one transfer; a leg whose partner is missing stays an
+/// ordinary row.
 
 final class ActivityEntriesProvider
     extends
@@ -23,7 +27,9 @@ final class ActivityEntriesProvider
           List<ActivityEntry>
         >
     with $Provider<List<ActivityEntry>> {
-  /// Every transaction and transfer as one list, newest first.
+  /// Every transaction and transfer as one list, newest first. A transfer's two
+  /// legs show as the one transfer; a leg whose partner is missing stays an
+  /// ordinary row.
   ActivityEntriesProvider._()
     : super(
         from: null,
@@ -58,7 +64,7 @@ final class ActivityEntriesProvider
   }
 }
 
-String _$activityEntriesHash() => r'6491909e7cdf453b487b11f53150232af02881b9';
+String _$activityEntriesHash() => r'2920faf02127f30c16976b586e160b6473e24c7d';
 
 /// The latest few entries, for Home.
 

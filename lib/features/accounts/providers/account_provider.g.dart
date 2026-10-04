@@ -127,7 +127,7 @@ final class AccountListProvider
   AccountList create() => AccountList();
 }
 
-String _$accountListHash() => r'a4cb6824acd59204bdd170fd0d8431fbc22cc609';
+String _$accountListHash() => r'ce5dfecb15839a4683974af6435244f43534751a';
 
 abstract class _$AccountList extends $AsyncNotifier<List<AccountModel>> {
   FutureOr<List<AccountModel>> build();
@@ -148,33 +148,33 @@ abstract class _$AccountList extends $AsyncNotifier<List<AccountModel>> {
   }
 }
 
-/// The user's default Cash account id, which transactions without an account
-/// belong to. Null until someone is signed in.
+/// The account marked as main, which new transactions and transfers start on.
+/// Null when none is, or the main one is archived.
 
-@ProviderFor(defaultAccountId)
-final defaultAccountIdProvider = DefaultAccountIdProvider._();
+@ProviderFor(mainAccountId)
+final mainAccountIdProvider = MainAccountIdProvider._();
 
-/// The user's default Cash account id, which transactions without an account
-/// belong to. Null until someone is signed in.
+/// The account marked as main, which new transactions and transfers start on.
+/// Null when none is, or the main one is archived.
 
-final class DefaultAccountIdProvider
+final class MainAccountIdProvider
     extends $FunctionalProvider<String?, String?, String?>
     with $Provider<String?> {
-  /// The user's default Cash account id, which transactions without an account
-  /// belong to. Null until someone is signed in.
-  DefaultAccountIdProvider._()
+  /// The account marked as main, which new transactions and transfers start on.
+  /// Null when none is, or the main one is archived.
+  MainAccountIdProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'defaultAccountIdProvider',
+        name: r'mainAccountIdProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$defaultAccountIdHash();
+  String debugGetCreateSourceHash() => _$mainAccountIdHash();
 
   @$internal
   @override
@@ -183,7 +183,7 @@ final class DefaultAccountIdProvider
 
   @override
   String? create(Ref ref) {
-    return defaultAccountId(ref);
+    return mainAccountId(ref);
   }
 
   /// {@macro riverpod.override_with_value}
@@ -195,4 +195,4 @@ final class DefaultAccountIdProvider
   }
 }
 
-String _$defaultAccountIdHash() => r'555a09ec93182cb3c937a9b94d50081278b3cace';
+String _$mainAccountIdHash() => r'4f08564f0603504e28d3415d2fdaf2c6c7b6663e';

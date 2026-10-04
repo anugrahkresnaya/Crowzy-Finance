@@ -169,7 +169,7 @@ final class TransactionListProvider
   TransactionList create() => TransactionList();
 }
 
-String _$transactionListHash() => r'b2214f8e157655bc13d9e719c96802df96e0bcdf';
+String _$transactionListHash() => r'6ea3bf4326549b3d6b6b9865e56a56ce425a6f3b';
 
 abstract class _$TransactionList
     extends $AsyncNotifier<List<TransactionModel>> {
@@ -319,23 +319,79 @@ final class LastUsedCategoryIdFamily extends $Family
   String toString() => r'lastUsedCategoryIdProvider';
 }
 
-/// Everything held across all accounts: opening balances plus every
-/// transaction. Transfers only move money between accounts, so they leave it
-/// unchanged (a transfer's fee is a transaction and does).
+/// Transactions that are spending or earning, which leaves out the two legs
+/// of every transfer. Reports, budgets, summaries and the AI read this.
+
+@ProviderFor(spendingTransactions)
+final spendingTransactionsProvider = SpendingTransactionsProvider._();
+
+/// Transactions that are spending or earning, which leaves out the two legs
+/// of every transfer. Reports, budgets, summaries and the AI read this.
+
+final class SpendingTransactionsProvider
+    extends
+        $FunctionalProvider<
+          List<TransactionModel>,
+          List<TransactionModel>,
+          List<TransactionModel>
+        >
+    with $Provider<List<TransactionModel>> {
+  /// Transactions that are spending or earning, which leaves out the two legs
+  /// of every transfer. Reports, budgets, summaries and the AI read this.
+  SpendingTransactionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'spendingTransactionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$spendingTransactionsHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<TransactionModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  List<TransactionModel> create(Ref ref) {
+    return spendingTransactions(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<TransactionModel> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<TransactionModel>>(value),
+    );
+  }
+}
+
+String _$spendingTransactionsHash() =>
+    r'48713c497dc33fc7355aa274ed93e7828fd0c47f';
+
+/// Everything held across all accounts: initial balances plus every
+/// transaction. A transfer's legs cancel, so it leaves this unchanged (its fee
+/// is an expense and does not).
 
 @ProviderFor(allTimeBalance)
 final allTimeBalanceProvider = AllTimeBalanceProvider._();
 
-/// Everything held across all accounts: opening balances plus every
-/// transaction. Transfers only move money between accounts, so they leave it
-/// unchanged (a transfer's fee is a transaction and does).
+/// Everything held across all accounts: initial balances plus every
+/// transaction. A transfer's legs cancel, so it leaves this unchanged (its fee
+/// is an expense and does not).
 
 final class AllTimeBalanceProvider
     extends $FunctionalProvider<double, double, double>
     with $Provider<double> {
-  /// Everything held across all accounts: opening balances plus every
-  /// transaction. Transfers only move money between accounts, so they leave it
-  /// unchanged (a transfer's fee is a transaction and does).
+  /// Everything held across all accounts: initial balances plus every
+  /// transaction. A transfer's legs cancel, so it leaves this unchanged (its fee
+  /// is an expense and does not).
   AllTimeBalanceProvider._()
     : super(
         from: null,
@@ -410,4 +466,4 @@ final class ThisMonthSummaryProvider
   }
 }
 
-String _$thisMonthSummaryHash() => r'23ae316bc8115c5fc64bbcdc3db7f00cb0a2a7b4';
+String _$thisMonthSummaryHash() => r'0de6d14c14e4036c1f9aeb5f4a9365d9a12442d3';

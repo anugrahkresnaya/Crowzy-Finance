@@ -12,9 +12,10 @@ _AccountModel _$AccountModelFromJson(Map<String, dynamic> json) =>
       userId: json['user_id'] as String,
       name: json['name'] as String,
       type: $enumDecode(_$AccountTypeEnumMap, json['type']),
-      openingBalance: json['opening_balance'] == null
+      initialBalance: json['initial_balance'] == null
           ? 0
-          : _amountFromJson(json['opening_balance']),
+          : _amountFromJson(json['initial_balance']),
+      isMain: json['is_main'] as bool? ?? false,
       isArchived: json['is_archived'] as bool? ?? false,
       isDeleted: json['is_deleted'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -28,7 +29,8 @@ Map<String, dynamic> _$AccountModelToJson(_AccountModel instance) =>
       'user_id': instance.userId,
       'name': instance.name,
       'type': _$AccountTypeEnumMap[instance.type]!,
-      'opening_balance': _amountToJson(instance.openingBalance),
+      'initial_balance': _amountToJson(instance.initialBalance),
+      'is_main': instance.isMain,
       'is_archived': instance.isArchived,
       'is_deleted': instance.isDeleted,
       'created_at': instance.createdAt.toIso8601String(),
@@ -38,6 +40,6 @@ Map<String, dynamic> _$AccountModelToJson(_AccountModel instance) =>
 
 const _$AccountTypeEnumMap = {
   AccountType.bank: 'bank',
-  AccountType.ewallet: 'ewallet',
+  AccountType.ewallet: 'e_wallet',
   AccountType.cash: 'cash',
 };

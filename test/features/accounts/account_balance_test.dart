@@ -2,19 +2,20 @@ import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/features/accounts/utils/account_balance.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../support/transfers.dart';
 
 void main() {
   final at = DateTime.utc(2026, 10, 1);
 
-  AccountModel account(String id, double opening, {bool archived = false}) => AccountModel(
+  AccountModel account(String id, double initial, {bool archived = false}) => AccountModel(
         id: id,
         userId: 'u',
         name: id,
         type: AccountType.bank,
-        openingBalance: opening,
+        initialBalance: initial,
         isArchived: archived,
         createdAt: at,
         updatedAt: at,
@@ -25,7 +26,6 @@ void main() {
     double amount, {
     TransactionType type = TransactionType.expense,
     String? accountId,
-    String? transferId,
   }) =>
       TransactionModel(
         id: id,
@@ -34,20 +34,6 @@ void main() {
         type: type,
         categoryId: 'c',
         accountId: accountId,
-        transferId: transferId,
-        date: at,
-        createdAt: at,
-        updatedAt: at,
-      );
-
-  TransferModel transfer(String id, String from, String to, double amount, {double fee = 0}) =>
-      TransferModel(
-        id: id,
-        userId: 'u',
-        fromAccountId: from,
-        toAccountId: to,
-        amount: amount,
-        fee: fee,
         date: at,
         createdAt: at,
         updatedAt: at,
@@ -55,26 +41,20 @@ void main() {
 
   final accounts = [account('bca', 9000000), account('dana', 250000), account('cash', 0)];
 
-  Map<String, double> balances({
-    List<TransactionModel> transactions = const [],
-    List<TransferModel> transfers = const [],
-    String? excluding,
-  }) =>
+  Map<String, double> balances(List<TransactionModel> transactions, {Set<String> excluding = const {}}) =>
       accountBalances(
         accounts: accounts,
         transactions: transactions,
-        transfers: transfers,
-        defaultAccountId: 'cash',
-        excludingTransferId: excluding,
+        excludingTransactionIds: excluding,
       );
 
   group('accountBalances', () {
-    test('starts from each opening balance', () {
-      expect(balances(), {'bca': 9000000, 'dana': 250000, 'cash': 0});
+    test('starts from each initial balance', () {
+      expect(balances(const []), {'bca': 9000000, 'dana': 250000, 'cash': 0});
     });
 
     test('income adds and expense subtracts on the account they belong to', () {
-      final result = balances(transactions: [
+      final result = balances([
         tx('a', 18200000, type: TransactionType.income, accountId: 'bca'),
         tx('b', 184500, accountId: 'bca'),
         tx('c', 68000, accountId: 'dana'),
@@ -85,82 +65,67 @@ void main() {
       expect(result['cash'], 0);
     });
 
-    test('a transaction with no account belongs to the default account', () {
-      final result = balances(transactions: [
-        tx('a', 50000, type: TransactionType.income),
-        tx('b', 20000),
-      ]);
-
-      expect(result['cash'], 30000);
-      expect(result['bca'], 9000000);
-    });
-
-    test('a transfer moves its amount from one account to the other', () {
-      final result = balances(transfers: [transfer('t', 'bca', 'dana', 500000)]);
+    test('a transfer moves money through its two legs, with no special case', () {
+      final result = balances(legsOf(fakeTransfer('t', from: 'bca', to: 'dana', amount: 500000)));
 
       expect(result['bca'], 8500000);
       expect(result['dana'], 750000);
     });
 
-    test('the fee leaves the source once, through its linked expense', () {
-      final result = balances(
-        transactions: [tx('fee', 2500, accountId: 'bca', transferId: 't')],
-        transfers: [transfer('t', 'bca', 'dana', 500000, fee: 2500)],
-      );
+    test('the fee is an ordinary expense on the source account', () {
+      final transfer = fakeTransfer('t', from: 'bca', to: 'dana', amount: 500000, fee: 2500);
+      final result = balances([...legsOf(transfer), feeOf(transfer)]);
 
       expect(result['bca'], 9000000 - 500000 - 2500);
       expect(result['dana'], 250000 + 500000);
     });
 
-    test('excluding a transfer gives the balances from before it, fee included', () {
-      final result = balances(
-        transactions: [tx('fee', 2500, accountId: 'bca', transferId: 't')],
-        transfers: [transfer('t', 'bca', 'dana', 500000, fee: 2500)],
-        excluding: 't',
-      );
+    test('transactions on no account are totalled apart, under the unassigned key', () {
+      final result = balances([
+        tx('a', 50000, type: TransactionType.income),
+        tx('b', 20000),
+        tx('c', 1000, accountId: 'bca'),
+      ]);
+
+      expect(result[unassignedAccountId], 30000);
+      expect(result['bca'], 9000000 - 1000);
+      expect(result['cash'], 0);
+    });
+
+    test('there is no unassigned entry when nothing is unassigned', () {
+      expect(balances([tx('a', 1, accountId: 'bca')]).containsKey(unassignedAccountId), isFalse);
+    });
+
+    test('a transaction on an account that no longer exists counts as unassigned', () {
+      final result = balances([tx('a', 10, accountId: 'ghost')]);
+
+      expect(result.containsKey('ghost'), isFalse);
+      expect(result[unassignedAccountId], -10);
+    });
+
+    test('excluding transactions gives the balances from before them, fee included', () {
+      final transfer = fakeTransfer('t', from: 'bca', to: 'dana', amount: 500000, fee: 2500);
+      final all = [...legsOf(transfer), feeOf(transfer)];
+
+      final result = balances(all, excluding: {transfer.outLegId, transfer.inLegId, transfer.feeId!});
 
       expect(result['bca'], 9000000);
       expect(result['dana'], 250000);
     });
 
-    test('excluding one transfer keeps the others', () {
+    test('excluding some transactions keeps the others', () {
       final result = balances(
-        transfers: [transfer('t1', 'bca', 'dana', 100), transfer('t2', 'bca', 'cash', 40)],
-        excluding: 't1',
+        [tx('a', 100, accountId: 'bca'), tx('b', 40, accountId: 'bca')],
+        excluding: {'a'},
       );
 
       expect(result['bca'], 9000000 - 40);
-      expect(result['cash'], 40);
-      expect(result['dana'], 250000);
-    });
-
-    test('anything pointing at an unknown account is ignored', () {
-      final result = balances(
-        transactions: [tx('a', 10, accountId: 'ghost')],
-        transfers: [transfer('t', 'ghost', 'dana', 100)],
-      );
-
-      expect(result.containsKey('ghost'), isFalse);
-      expect(result['dana'], 250100);
-    });
-
-    test('with no default account known, an account-less transaction counts nowhere', () {
-      final result = accountBalances(
-        accounts: accounts,
-        transactions: [tx('a', 10)],
-        transfers: const [],
-        defaultAccountId: null,
-      );
-
-      expect(result.values.reduce((a, b) => a + b), 9250000);
     });
 
     test('archived accounts keep their balance', () {
       final result = accountBalances(
         accounts: [account('old', 700, archived: true)],
         transactions: [tx('a', 200, accountId: 'old', type: TransactionType.income)],
-        transfers: const [],
-        defaultAccountId: null,
       );
 
       expect(result['old'], 900);
@@ -168,26 +133,27 @@ void main() {
   });
 
   group('totalBalance', () {
-    test('is the opening balances plus income minus expense', () {
+    test('is the initial balances plus income minus expense, wherever it is', () {
       final total = totalBalance(
         accounts: accounts,
         transactions: [
           tx('a', 1000, type: TransactionType.income, accountId: 'bca'),
           tx('b', 300, accountId: 'dana'),
+          tx('c', 50),
         ],
       );
 
-      expect(total, 9250000 + 1000 - 300);
+      expect(total, 9250000 + 1000 - 300 - 50);
     });
 
     test('a transfer leaves it unchanged, a transfer fee lowers it by the fee only', () {
-      const feeOnly = 2500.0;
-      final total = totalBalance(
-        accounts: accounts,
-        transactions: [tx('fee', feeOnly, accountId: 'bca', transferId: 't')],
-      );
+      final transfer = fakeTransfer('t', amount: 500000, fee: 2500);
 
-      expect(total, 9250000 - feeOnly);
+      expect(totalBalance(accounts: accounts, transactions: legsOf(transfer)), 9250000);
+      expect(
+        totalBalance(accounts: accounts, transactions: [...legsOf(transfer), feeOf(transfer)]),
+        9250000 - 2500,
+      );
     });
 
     test('archived accounts still count', () {
@@ -197,28 +163,26 @@ void main() {
       );
     });
 
-    test('equals the sum of the individual balances when every transaction has a known account', () {
+    test('equals the sum of every row on the Accounts screen, unassigned money included', () {
+      final transfer = fakeTransfer('t', from: 'bca', to: 'dana', amount: 500000, fee: 2500);
       final transactions = [
         tx('a', 18200000, type: TransactionType.income, accountId: 'bca'),
         tx('b', 184500, accountId: 'dana'),
         tx('c', 20000),
-        tx('fee', 2500, accountId: 'bca', transferId: 't'),
+        ...legsOf(transfer),
+        feeOf(transfer),
       ];
-      final transfers = [transfer('t', 'bca', 'dana', 500000, fee: 2500)];
 
-      final sum = accountBalances(
-        accounts: accounts,
-        transactions: transactions,
-        transfers: transfers,
-        defaultAccountId: 'cash',
-      ).values.reduce((a, b) => a + b);
+      final sum = accountBalances(accounts: accounts, transactions: transactions)
+          .values
+          .reduce((a, b) => a + b);
 
       expect(totalBalance(accounts: accounts, transactions: transactions), sum);
     });
   });
 
-  test('openingTotal adds every account, archived included', () {
-    expect(openingTotal([account('a', 100), account('b', -40, archived: true)]), 60);
-    expect(openingTotal(const []), 0);
+  test('initialTotal adds every account, archived included', () {
+    expect(initialTotal([account('a', 100), account('b', -40, archived: true)]), 60);
+    expect(initialTotal(const []), 0);
   });
 }

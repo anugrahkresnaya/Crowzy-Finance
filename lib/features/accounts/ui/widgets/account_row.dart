@@ -16,6 +16,7 @@ class AccountRow extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.dimmed = false,
+    this.icon,
   });
 
   final AccountModel account;
@@ -25,6 +26,9 @@ class AccountRow extends StatelessWidget {
 
   /// Archived accounts are shown quieter.
   final bool dimmed;
+
+  /// Replaces the account type's icon, for the row that stands for no account.
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +57,7 @@ class AccountRow extends StatelessWidget {
                     color: AppColors.surface,
                     border: Border.all(color: AppColors.hairline),
                   ),
-                  child: Icon(account.type.icon, size: 19, color: AppColors.brass),
+                  child: Icon(icon ?? account.type.icon, size: 19, color: AppColors.brass),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

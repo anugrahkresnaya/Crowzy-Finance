@@ -11,7 +11,6 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
 import '../../../core/widgets/ledger_frame.dart';
 import '../../../data/models/account_model.dart';
-import '../../../data/models/transfer_model.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../transactions/providers/activity_provider.dart';
 import '../../transactions/ui/add_edit_transaction_screen.dart';
@@ -21,6 +20,7 @@ import '../../transactions/utils/activity_feed.dart';
 import '../providers/account_provider.dart';
 import '../providers/balance_provider.dart';
 import '../providers/transfer_provider.dart';
+import '../utils/account_balance.dart';
 import '../utils/account_feed.dart';
 import 'account_form_screen.dart';
 import 'transfer_form_screen.dart';
@@ -34,7 +34,8 @@ class AccountDetailScreen extends ConsumerStatefulWidget {
   final String accountId;
 
   @override
-  ConsumerState<AccountDetailScreen> createState() => _AccountDetailScreenState();
+  ConsumerState<AccountDetailScreen> createState() =>
+      _AccountDetailScreenState();
 }
 
 class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
@@ -50,11 +51,15 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(accountListProvider).value ?? const <AccountModel>[];
+    final accounts =
+        ref.watch(accountListProvider).value ?? const <AccountModel>[];
+    // Money on no account has a page too, to see what is in it. It has no
+    // account to edit and nothing to transfer from.
+    final isUnassigned = widget.accountId == unassignedAccountId;
     final account = accounts.firstWhereOrNull((a) => a.id == widget.accountId);
     final textTheme = Theme.of(context).textTheme;
 
-    if (account == null) {
+    if (account == null && !isUnassigned) {
       return Scaffold(
         appBar: AppBar(),
         body: const EmptyState(
@@ -64,20 +69,20 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
       );
     }
 
-    final balance = ref.watch(accountBalanceMapProvider)[account.id] ?? account.openingBalance;
-    final defaultId = ref.watch(defaultAccountIdProvider);
+    final balance =
+        ref.watch(accountBalanceMapProvider)[widget.accountId] ??
+        account?.initialBalance ??
+        0;
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final categoryById = {for (final c in categories) c.id: c};
     final accountNames = {for (final a in accounts) a.id: a.name};
-    final transfers = ref.watch(transferListProvider).value ?? const <TransferModel>[];
-    final transfersById = {for (final t in transfers) t.id: t};
+    final feeTransfers = ref.watch(feeTransfersProvider);
 
     final month = DateTime.now();
     final mine = filterActivity(
       entriesForAccount(
         ref.watch(activityEntriesProvider),
-        accountId: account.id,
-        defaultAccountId: defaultId,
+        accountId: widget.accountId,
       ),
       month: month,
       filter: _transfersOnly ? ActivityFilter.transfers : ActivityFilter.all,
@@ -91,22 +96,32 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(account.type.label.toUpperCase(), style: AppText.eyebrow(context)),
-            Text(account.name, style: textTheme.titleLarge?.copyWith(fontSize: 30, height: 1.05)),
+            Text(
+              (account?.type.label ?? 'No account').toUpperCase(),
+              style: AppText.eyebrow(context),
+            ),
+            Text(
+              account?.name ?? 'Unassigned',
+              style: textTheme.titleLarge?.copyWith(fontSize: 30, height: 1.05),
+            ),
           ],
         ),
         actions: [
-          IconButton(
-            tooltip: 'Edit account',
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.surface,
-              foregroundColor: AppColors.ivory,
-              fixedSize: const Size(44, 44),
-              shape: const CircleBorder(side: BorderSide(color: AppColors.hairline)),
+          if (account != null)
+            IconButton(
+              tooltip: 'Edit account',
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.ivory,
+                fixedSize: const Size(44, 44),
+                shape: const CircleBorder(
+                  side: BorderSide(color: AppColors.hairline),
+                ),
+              ),
+              icon: const Icon(Icons.edit_outlined, size: 19),
+              onPressed: () =>
+                  pushSlide(context, AccountFormScreen(account: account)),
             ),
-            icon: const Icon(Icons.edit_outlined, size: 19),
-            onPressed: () => pushSlide(context, AccountFormScreen(account: account)),
-          ),
           const SizedBox(width: 16),
         ],
       ),
@@ -121,38 +136,46 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
                 Text('BALANCE', style: AppText.eyebrow(context)),
                 const SizedBox(height: 8),
                 BalanceAmount(balance: balance, size: 44),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: _buttonStyle,
-                        onPressed: () => pushSlide(
-                          context,
-                          TransferFormScreen(initialFromAccountId: account.id),
-                        ),
-                        icon: const Icon(Icons.swap_vert_rounded, size: 17),
-                        label: const Text('Transfer'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton(
-                        style: _buttonStyle.copyWith(
-                          foregroundColor: const WidgetStatePropertyAll(AppColors.ivory),
-                          side: const WidgetStatePropertyAll(
-                            BorderSide(color: AppColors.heroBorder),
+                if (account != null) ...[
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: _buttonStyle,
+                          onPressed: () => pushSlide(
+                            context,
+                            TransferFormScreen(
+                              initialFromAccountId: account.id,
+                            ),
                           ),
+                          icon: const Icon(Icons.swap_vert_rounded, size: 17),
+                          label: const Text('Transfer'),
                         ),
-                        onPressed: () => pushSlide(
-                          context,
-                          AddEditTransactionScreen(initialAccountId: account.id),
-                        ),
-                        child: const Text('Add transaction'),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: _buttonStyle.copyWith(
+                            foregroundColor: const WidgetStatePropertyAll(
+                              AppColors.ivory,
+                            ),
+                            side: const WidgetStatePropertyAll(
+                              BorderSide(color: AppColors.heroBorder),
+                            ),
+                          ),
+                          onPressed: () => pushSlide(
+                            context,
+                            AddEditTransactionScreen(
+                              initialAccountId: account.id,
+                            ),
+                          ),
+                          child: const Text('Add transaction'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -186,7 +209,9 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
               padding: const EdgeInsets.only(top: 24),
               child: EmptyState(
                 icon: Icons.receipt_long_outlined,
-                message: _transfersOnly ? 'No transfers this month' : 'No activity this month',
+                message: _transfersOnly
+                    ? 'No transfers this month'
+                    : 'No activity this month',
               ),
             )
           else ...[
@@ -198,18 +223,20 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
                   entry: entry,
                   categoryById: categoryById,
                   accountNames: accountNames,
-                  transfersById: transfersById,
-                  defaultAccountId: defaultId,
+                  feeTransfers: feeTransfers,
                   showDate: false,
                   showFeeRoute: true,
-                  perspectiveAccountId: account.id,
+                  perspectiveAccountId: widget.accountId,
                 ).entrance(context, axis: Axis.horizontal),
             ],
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 12, 2, 0),
               child: Text(
                 'Transfers move money, so day totals leave them out.',
-                style: textTheme.bodySmall?.copyWith(color: AppColors.textFaint, height: 1.5),
+                style: textTheme.bodySmall?.copyWith(
+                  color: AppColors.textFaint,
+                  height: 1.5,
+                ),
               ),
             ),
           ],
@@ -220,7 +247,11 @@ class _AccountDetailScreenState extends ConsumerState<AccountDetailScreen> {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;

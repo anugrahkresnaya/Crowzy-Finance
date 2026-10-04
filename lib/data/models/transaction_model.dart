@@ -21,7 +21,7 @@ abstract class TransactionModel with _$TransactionModel {
     @JsonKey(name: 'category_id') required String categoryId,
     String? note,
     @JsonKey(name: 'account_id') String? accountId,
-    @JsonKey(name: 'transfer_id') String? transferId,
+    @JsonKey(name: 'transfer_group_id') String? transferGroupId,
     required DateTime date,
     @JsonKey(name: 'is_deleted') @Default(false) bool isDeleted,
     @JsonKey(name: 'created_at') required DateTime createdAt,

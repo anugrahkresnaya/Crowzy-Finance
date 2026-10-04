@@ -1,14 +1,16 @@
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/features/accounts/utils/account_balance.dart';
 import 'package:crowzy_finance/features/accounts/utils/account_feed.dart';
 import 'package:crowzy_finance/features/transactions/utils/activity_feed.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/transfers.dart';
+
 void main() {
   final at = DateTime(2026, 10, 2);
 
-  ActivityEntry tx(String id, {String? accountId, String? transferId}) => TransactionEntry(
+  ActivityEntry tx(String id, {String? accountId}) => TransactionEntry(
         TransactionModel(
           id: id,
           userId: 'u',
@@ -16,37 +18,23 @@ void main() {
           type: TransactionType.expense,
           categoryId: 'c',
           accountId: accountId,
-          transferId: transferId,
           date: at,
           createdAt: at,
           updatedAt: at,
         ),
       );
 
-  ActivityEntry transfer(String id, String from, String to) => TransferEntry(
-        TransferModel(
-          id: id,
-          userId: 'u',
-          fromAccountId: from,
-          toAccountId: to,
-          amount: 10,
-          date: at,
-          createdAt: at,
-          updatedAt: at,
-        ),
-      );
+  ActivityEntry transfer(String id, String from, String to) =>
+      TransferEntry(fakeTransfer(id, from: from, to: to));
 
-  List<String> ids(String account, List<ActivityEntry> all) => entriesForAccount(
-        all,
-        accountId: account,
-        defaultAccountId: 'cash',
-      ).map((e) => e.id).toList();
+  List<String> ids(String account, List<ActivityEntry> all) =>
+      entriesForAccount(all, accountId: account).map((e) => e.id).toList();
 
   final all = [
     tx('on-bca', accountId: 'bca'),
     tx('on-dana', accountId: 'dana'),
     tx('no-account'),
-    tx('fee', accountId: 'bca', transferId: 't1'),
+    tx('fee', accountId: 'bca'),
     transfer('t1', 'bca', 'dana'),
     transfer('t2', 'dana', 'cash'),
   ];
@@ -57,18 +45,16 @@ void main() {
 
   test('a transfer shows on both the account it left and the one it reached', () {
     expect(ids('dana', all), ['on-dana', 't1', 't2']);
-    expect(ids('cash', all), ['no-account', 't2']);
+    expect(ids('cash', all), ['t2']);
   });
 
-  test('a transaction with no account belongs to the default account only', () {
+  test('a transaction with no account is on no account page but the unassigned one', () {
     expect(ids('bca', all), isNot(contains('no-account')));
-    expect(ids('cash', all), contains('no-account'));
+    expect(ids(unassignedAccountId, all), ['no-account']);
   });
 
-  test('with no default account known, account-less transactions belong to nobody', () {
-    final result = entriesForAccount(all, accountId: 'cash', defaultAccountId: null);
-
-    expect(result.map((e) => e.id), ['t2']);
+  test('the unassigned page never lists a transfer', () {
+    expect(ids(unassignedAccountId, [transfer('t', 'bca', 'dana')]), isEmpty);
   });
 
   test('an account with nothing on it has an empty list', () {

@@ -4,7 +4,7 @@ import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
+import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
 import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/accounts/ui/account_detail_screen.dart';
@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../support/transfers.dart';
 
 final _at = DateTime(2026, 10, 1);
 final _now = DateTime.now();
@@ -32,7 +34,7 @@ AccountModel _account(
       userId: 'u1',
       name: name,
       type: type,
-      openingBalance: opening,
+      initialBalance: opening,
       isArchived: archived,
       createdAt: createdAt ?? _at,
       updatedAt: _at,
@@ -53,7 +55,7 @@ TransactionModel _tx(String id, double amount, {String? accountId, bool income =
 
 late List<AccountModel> _accounts;
 late List<TransactionModel> _transactions;
-late List<TransferModel> _transfers;
+late List<Transfer> _transfers;
 final _added = <({String name, AccountType type, double opening})>[];
 final _updated = <AccountModel>[];
 
@@ -65,9 +67,9 @@ class _FakeAccounts extends AccountList {
   Future<void> addAccount({
     required String name,
     required AccountType type,
-    required double openingBalance,
+    required double initialBalance,
   }) async {
-    _added.add((name: name, type: type, opening: openingBalance));
+    _added.add((name: name, type: type, opening: initialBalance));
   }
 
   @override
@@ -86,12 +88,7 @@ class _NoMemory implements LastTransferSource {
 
 class _FakeTransactions extends TransactionList {
   @override
-  Future<List<TransactionModel>> build() async => _transactions;
-}
-
-class _FakeTransfers extends TransferList {
-  @override
-  Future<List<TransferModel>> build() async => _transfers;
+  Future<List<TransactionModel>> build() async => [..._transactions, for (final t in _transfers) ...legsOf(t)];
 }
 
 void main() {
@@ -109,7 +106,7 @@ void main() {
     _updated.clear();
   });
 
-  Future<void> pump(WidgetTester tester, Widget screen) async {
+  Future<void> pump(WidgetTester tester, Widget screen, {String? main}) async {
     await tester.binding.setSurfaceSize(const Size(390, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -118,8 +115,7 @@ void main() {
         overrides: [
           accountListProvider.overrideWith(_FakeAccounts.new),
           transactionListProvider.overrideWith(_FakeTransactions.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          mainAccountIdProvider.overrideWithValue(main),
           lastTransferSourceProvider.overrideWithValue(_NoMemory()),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: screen),
@@ -151,29 +147,19 @@ void main() {
       expect(tops, [...tops]..sort());
     });
 
-    testWidgets('subtitles: default account, activity this month, or none', (tester) async {
+    testWidgets('subtitles: main account, activity this month, or none', (tester) async {
+      _accounts = [_accounts.first.copyWith(isMain: true), ..._accounts.skip(1)];
       _transactions = [_tx('a', 10, accountId: 'bca'), _tx('b', 10, accountId: 'bca')];
       await pump(tester, const AccountsScreen());
 
-      expect(find.text('Default account'), findsOneWidget);
+      expect(find.text('Main account'), findsOneWidget); // Cash is marked main
       expect(find.text('2 entries this month'), findsOneWidget); // BCA
       expect(find.text('No activity this month'), findsOneWidget); // DANA
     });
 
     testWidgets('balances follow transactions and transfers, and a negative one is flagged', (tester) async {
       _transactions = [_tx('a', 100000, accountId: 'dana', income: true), _tx('b', 3000000, accountId: 'dana')];
-      _transfers = [
-        TransferModel(
-          id: 't',
-          userId: 'u1',
-          fromAccountId: 'bca',
-          toAccountId: 'cash',
-          amount: 500000,
-          date: _now,
-          createdAt: _at,
-          updatedAt: _at,
-        ),
-      ];
+      _transfers = [fakeTransfer('t', from: 'bca', to: 'cash', amount: 500000, date: _now)];
       await pump(tester, const AccountsScreen());
 
       expect(find.text('9.230.000'), findsOneWidget); // BCA after the transfer
@@ -199,6 +185,46 @@ void main() {
       await tester.tap(find.text('1 archived account'));
       await tester.pumpAndSettle();
       expect(find.text('Old card'), findsNothing);
+    });
+
+    testWidgets('money on no account gets its own muted row, so the rows add up to the total', (tester) async {
+      _transactions = [_tx('legacy', 70000), _tx('pay', 20000, income: true)];
+      await pump(tester, const AccountsScreen());
+
+      expect(find.text('NO ACCOUNT'), findsOneWidget);
+      expect(find.text('Unassigned'), findsOneWidget);
+      expect(find.text('Not on any account'), findsOneWidget);
+      expect(find.text('−50.000'), findsOneWidget);
+      expect(find.text('12.430.000'), findsOneWidget); // the total, 12.480.000 less 50.000
+      // The accounts (9.730.000 + 1.850.000 + 900.000) and the unassigned −50.000 add up to it.
+      expect(9730000 + 1850000 + 900000 - 50000, 12430000);
+    });
+
+    testWidgets('there is no Unassigned row when everything is on an account', (tester) async {
+      _transactions = [_tx('a', 10, accountId: 'bca')];
+      await pump(tester, const AccountsScreen());
+
+      expect(find.text('Unassigned'), findsNothing);
+      expect(find.text('NO ACCOUNT'), findsNothing);
+    });
+
+    testWidgets('the Unassigned row opens a page for it', (tester) async {
+      _transactions = [_tx('legacy', 70000)];
+      await pump(tester, const AccountsScreen());
+
+      await tester.tap(find.text('Unassigned'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AccountDetailScreen), findsOneWidget);
+      expect(find.text('NO ACCOUNT'), findsOneWidget);
+    });
+
+    testWidgets('with no accounts yet it invites adding the first', (tester) async {
+      _accounts = [];
+      await pump(tester, const AccountsScreen());
+
+      expect(find.text('Add your first account with the + button'), findsOneWidget);
+      expect(find.text('ACROSS 0 ACCOUNTS'), findsOneWidget);
     });
 
     testWidgets('a single account reads "1 account"', (tester) async {
@@ -319,14 +345,32 @@ void main() {
       expect(_updated.single.id, 'dana');
       expect(_updated.single.name, 'DANA Main');
       expect(_updated.single.isArchived, isTrue);
-      expect(_updated.single.openingBalance, 1850000);
+      expect(_updated.single.initialBalance, 1850000);
     });
 
-    testWidgets('the default Cash account cannot be archived', (tester) async {
+    testWidgets('a main account stays main when it is edited, and can be archived like any other', (tester) async {
+      _accounts = [_accounts.first.copyWith(isMain: true), ..._accounts.skip(1)];
       await pump(tester, AccountFormScreen(account: _accounts.first));
 
-      expect(find.text('Edit account'), findsOneWidget);
-      expect(find.text('Archive this account'), findsNothing);
+      expect(find.text('Archive this account'), findsOneWidget);
+
+      await tester.tap(find.byType(Switch));
+      await tester.pump();
+      await tester.tap(find.text('Save account'));
+      await tester.pumpAndSettle();
+
+      expect(_updated.single.isMain, isTrue);
+      expect(_updated.single.isArchived, isTrue);
+    });
+
+    testWidgets('the initial balance is saved under its own name', (tester) async {
+      await pump(tester, AccountFormScreen(account: _accounts[1]));
+
+      await tester.enterText(find.byType(TextFormField).last, '1000000');
+      await tester.tap(find.text('Save account'));
+      await tester.pumpAndSettle();
+
+      expect(_updated.single.initialBalance, 1000000);
     });
   });
 }

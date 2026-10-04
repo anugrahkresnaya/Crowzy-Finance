@@ -40,7 +40,22 @@ class BudgetRepository {
     DateTime? now,
   }) async {
     final at = now ?? DateTime.now();
-    final id = idFor(userId, categoryId);
+
+    // A limit for this category may already exist under another id (the server
+    // lets another device create it), and only one active limit per category is
+    // allowed. Reuse that row, preferring an active one over a removed one.
+    String? existingId;
+    for (final candidate in _box.values) {
+      final budget = BudgetModel.fromJson(Map<String, dynamic>.from(candidate));
+      if (budget.userId != userId || budget.categoryId != categoryId) continue;
+      if (!budget.isDeleted) {
+        existingId = budget.id;
+        break;
+      }
+      existingId ??= budget.id;
+    }
+
+    final id = existingId ?? idFor(userId, categoryId);
     final raw = _box.get(id);
 
     if (raw == null) {

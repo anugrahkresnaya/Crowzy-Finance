@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
 import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/balance_card.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
 import '../../../core/widgets/ledger_frame.dart';
 import '../../../data/models/account_model.dart';
@@ -13,6 +14,7 @@ import '../../transactions/providers/transaction_provider.dart';
 import '../providers/account_provider.dart';
 import '../providers/balance_provider.dart';
 import '../utils/account_activity.dart';
+import '../utils/account_balance.dart';
 import 'account_detail_screen.dart';
 import 'account_form_screen.dart';
 import 'transfer_form_screen.dart';
@@ -30,16 +32,26 @@ class AccountsScreen extends ConsumerStatefulWidget {
 class _AccountsScreenState extends ConsumerState<AccountsScreen> {
   bool _showArchived = false;
 
-  void _open(AccountModel account) {
-    pushSlide(context, AccountDetailScreen(accountId: account.id));
+  void _open(String accountId) {
+    pushSlide(context, AccountDetailScreen(accountId: accountId));
   }
+
+  /// Stands in for the transactions that are on no account, so the rows add up
+  /// to the total.
+  static final _unassigned = AccountModel(
+    id: unassignedAccountId,
+    userId: '',
+    name: 'Unassigned',
+    type: AccountType.cash,
+    createdAt: DateTime.utc(1970),
+    updatedAt: DateTime.utc(1970),
+  );
 
   @override
   Widget build(BuildContext context) {
     final accountsAsync = ref.watch(accountListProvider);
     final balances = ref.watch(accountBalanceMapProvider);
     final entries = ref.watch(accountEntriesThisMonthProvider);
-    final defaultId = ref.watch(defaultAccountIdProvider);
     final total = ref.watch(allTimeBalanceProvider);
 
     return Scaffold(
@@ -73,13 +85,13 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
             return AccountRow(
               key: ValueKey(account.id),
               account: account,
-              balance: balances[account.id] ?? account.openingBalance,
+              balance: balances[account.id] ?? account.initialBalance,
               subtitle: accountSubtitle(
-                isDefault: account.id == defaultId,
+                isMain: account.isMain,
                 entriesThisMonth: entries[account.id] ?? 0,
               ),
               dimmed: dimmed,
-              onTap: () => _open(account),
+              onTap: () => _open(account.id),
             ).entrance(context, index: index, axis: Axis.horizontal);
           }
 
@@ -119,6 +131,28 @@ class _AccountsScreenState extends ConsumerState<AccountsScreen> {
                     for (final account in ofType) row(account),
                   ];
                 }(),
+              if (balances.containsKey(unassignedAccountId)) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 20, 2, 2),
+                  child: Text('NO ACCOUNT', style: AppText.eyebrow(context)),
+                ),
+                AccountRow(
+                  account: _unassigned,
+                  icon: Icons.help_outline_rounded,
+                  balance: balances[unassignedAccountId]!,
+                  subtitle: 'Not on any account',
+                  dimmed: true,
+                  onTap: () => _open(unassignedAccountId),
+                ),
+              ],
+              if (all.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: EmptyState(
+                    icon: Icons.account_balance_wallet_outlined,
+                    message: 'Add your first account with the + button',
+                  ),
+                ),
               const SizedBox(height: 22),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),

@@ -2,9 +2,8 @@ import 'package:crowzy_finance/core/theme/app_colors.dart';
 import 'package:crowzy_finance/core/theme/app_theme.dart';
 import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/account_type.dart';
-import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
-import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
+import 'package:crowzy_finance/features/accounts/utils/transfers.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
@@ -17,13 +16,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../support/transfers.dart';
+
 late List<TransactionModel> _transactions;
 List<AccountModel> _accounts = [];
-
-class _FakeTransfers extends TransferList {
-  @override
-  Future<List<TransferModel>> build() async => const [];
-}
 
 class _FakeAccounts extends AccountList {
   @override
@@ -112,9 +108,8 @@ void main() {
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
           accountListProvider.overrideWith(_FakeAccounts.new),
-          transferListProvider.overrideWith(_FakeTransfers.new),
           lastUsedAccountIdProvider.overrideWithValue(null),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          mainAccountIdProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
           theme: AppTheme.dark,
@@ -160,11 +155,10 @@ void main() {
     expect(top, lessThan(tester.getTopLeft(find.text('DATE')).dy));
   });
 
-  testWidgets('a transaction with no account shows the default one', (tester) async {
+  testWidgets('a transaction on no account has no account row', (tester) async {
     await pump(tester);
 
-    expect(find.text('ACCOUNT'), findsOneWidget);
-    expect(find.text('Cash'), findsOneWidget);
+    expect(find.text('ACCOUNT'), findsNothing);
   });
 
   testWidgets('the account row is left out when the account is unknown', (tester) async {
@@ -174,27 +168,14 @@ void main() {
     expect(find.text('ACCOUNT'), findsNothing);
   });
 
-  testWidgets('a transfer fee opens its transfer receipt instead, since it is changed through the transfer', (tester) async {
-    _transactions = [
-      TransactionModel(
-        id: 't1',
-        userId: 'u1',
-        amount: 2500,
-        type: TransactionType.expense,
-        categoryId: 'food',
-        note: 'Transfer fee',
-        accountId: 'bca',
-        transferId: 'tr1',
-        date: DateTime(2026, 10, 3),
-        createdAt: DateTime(2026, 10, 3),
-        updatedAt: DateTime(2026, 10, 3),
-      ),
-    ];
-    await pump(tester);
+  testWidgets('a transfer fee opens its transfer receipt instead, since it reads as part of the transfer', (tester) async {
+    final transfer = fakeTransfer('tr1', from: 'cash', to: 'bca', amount: 500000, fee: 2500, note: 'Top up');
+    _transactions = [...legsOf(transfer), feeOf(transfer, categoryId: 'food')];
+    await pump(tester, id: feeIdFor('tr1'));
 
     expect(find.text('TRANSACTION RECEIPT'), findsNothing);
-    expect(find.text('Edit'), findsNothing);
-    expect(find.text('This transfer no longer exists'), findsOneWidget); // none in this fake
+    expect(find.text('TRANSFER RECEIPT'), findsOneWidget);
+    expect(find.text('LEFT CASH'), findsOneWidget);
   });
 
   testWidgets('without a note the category is the headline', (tester) async {
@@ -288,7 +269,7 @@ void main() {
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
           accountListProvider.overrideWith(_FakeAccounts.new),
-          defaultAccountIdProvider.overrideWithValue('cash'),
+          mainAccountIdProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
           theme: AppTheme.dark,

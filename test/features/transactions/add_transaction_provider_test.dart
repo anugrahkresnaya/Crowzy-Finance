@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
-import 'package:crowzy_finance/features/accounts/repository/account_repository.dart';
 import 'package:crowzy_finance/features/auth/providers/auth_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,81 +12,89 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 void main() {
   late Box<Map> box;
   late Box meta;
-  late Box<Map> accountsBox;
-  late ProviderContainer container;
 
   setUp(() async {
     Hive.init(Directory.systemTemp.createTempSync().path);
     box = await Hive.openBox<Map>('test_add_transactions');
     meta = await Hive.openBox('test_add_meta');
-    accountsBox = await Hive.openBox<Map>('test_add_accounts');
-    container = ProviderContainer(overrides: [
-      transactionBoxProvider.overrideWithValue(box),
-      syncMetaBoxProvider.overrideWithValue(meta),
-      accountsBoxProvider.overrideWithValue(accountsBox),
-      currentUserProvider.overrideWithValue(
-        const User(id: 'u1', appMetadata: {}, userMetadata: {}, aud: '', createdAt: ''),
-      ),
-      defaultAccountIdProvider.overrideWithValue(AccountRepository.defaultIdFor('u1')),
-    ]);
-    // The list is auto-disposed, so keep it alive while the test runs.
-    container.listen(transactionListProvider, (_, _) {});
-    await container.read(transactionListProvider.future);
   });
 
   tearDown(() async {
-    container.dispose();
     await box.deleteFromDisk();
     await meta.deleteFromDisk();
-    await accountsBox.deleteFromDisk();
   });
 
-  Future<void> add({String? accountId}) => container.read(transactionListProvider.notifier).addTransaction(
-        amount: 1000,
-        type: TransactionType.expense,
-        categoryId: 'food',
-        date: DateTime(2026, 10, 2),
-        accountId: accountId,
-      );
+  Future<ProviderContainer> container({String? main}) async {
+    final c = ProviderContainer(overrides: [
+      transactionBoxProvider.overrideWithValue(box),
+      syncMetaBoxProvider.overrideWithValue(meta),
+      mainAccountIdProvider.overrideWithValue(main),
+      currentUserProvider.overrideWithValue(
+        const User(id: 'u1', appMetadata: {}, userMetadata: {}, aud: '', createdAt: ''),
+      ),
+    ]);
+    addTearDown(c.dispose);
+    // The list is auto-disposed, so keep it alive while the test runs.
+    c.listen(transactionListProvider, (_, _) {});
+    await c.read(transactionListProvider.future);
+    return c;
+  }
+
+  Future<void> add(ProviderContainer c, {String? accountId}) =>
+      c.read(transactionListProvider.notifier).addTransaction(
+            amount: 1000,
+            type: TransactionType.expense,
+            categoryId: 'food',
+            date: DateTime(2026, 10, 2),
+            accountId: accountId,
+          );
 
   test('a transaction added to an account is saved on it, and that account is remembered', () async {
-    await add(accountId: 'bca');
+    final c = await container();
 
-    final saved = container.read(transactionListProvider).value!.single;
+    await add(c, accountId: 'bca');
+
+    final saved = c.read(transactionListProvider).value!.single;
     expect(saved.accountId, 'bca');
     expect(saved.isSynced, isFalse);
-    expect(container.read(lastUsedAccountIdProvider), 'bca');
+    expect(c.read(lastUsedAccountIdProvider), 'bca');
   });
 
-  test('with no account given it goes to the default Cash account', () async {
-    await add();
+  test('with no account given it starts on the main account', () async {
+    final c = await container(main: 'dana');
+    await meta.put('last_used_account', 'bca');
 
-    expect(
-      container.read(transactionListProvider).value!.single.accountId,
-      AccountRepository.defaultIdFor('u1'),
-    );
+    await add(c);
+
+    expect(c.read(transactionListProvider).value!.single.accountId, 'dana');
   });
 
-  test('the default account is created locally so it can be pushed ahead of the transaction', () async {
-    expect(accountsBox.isEmpty, isTrue);
+  test('with no main account it uses the account last used', () async {
+    final c = await container();
+    await meta.put('last_used_account', 'bca');
 
-    await add();
+    await add(c);
 
-    expect(accountsBox.containsKey(AccountRepository.defaultIdFor('u1')), isTrue);
+    expect(c.read(transactionListProvider).value!.single.accountId, 'bca');
   });
 
-  test('adding to another account leaves the default account alone', () async {
-    await add(accountId: 'bca');
+  test('with neither it is left on no account, not given an invented one', () async {
+    final c = await container();
 
-    expect(accountsBox.isEmpty, isTrue);
+    await add(c);
+
+    expect(c.read(transactionListProvider).value!.single.accountId, isNull);
+    expect(meta.get('last_used_account'), isNull);
   });
 
   test('the last used account follows the latest transaction', () async {
-    await add(accountId: 'bca');
-    container.invalidate(lastUsedAccountIdProvider);
-    await add(accountId: 'dana');
-    container.invalidate(lastUsedAccountIdProvider);
+    final c = await container();
 
-    expect(container.read(lastUsedAccountIdProvider), 'dana');
+    await add(c, accountId: 'bca');
+    c.invalidate(lastUsedAccountIdProvider);
+    await add(c, accountId: 'dana');
+    c.invalidate(lastUsedAccountIdProvider);
+
+    expect(c.read(lastUsedAccountIdProvider), 'dana');
   });
 }

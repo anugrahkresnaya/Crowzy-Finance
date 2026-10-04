@@ -10,7 +10,6 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
 import '../../../core/widgets/month_switcher.dart';
 import '../../../data/models/category_model.dart';
-import '../../../data/models/transfer_model.dart';
 import '../../accounts/providers/account_provider.dart';
 import '../../accounts/providers/transfer_provider.dart';
 import '../../categories/providers/category_provider.dart';
@@ -269,9 +268,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
     final categoryById = {for (final c in categories) c.id: c};
     final accounts = ref.watch(accountListProvider).value ?? const [];
     final accountNames = {for (final a in accounts) a.id: a.name};
-    final transfers = ref.watch(transferListProvider).value ?? const <TransferModel>[];
-    final transfersById = {for (final t in transfers) t.id: t};
-    final defaultAccountId = ref.watch(defaultAccountIdProvider);
+    final feeTransfers = ref.watch(feeTransfersProvider);
     final query = _searchController.text;
 
     final filtered = sortActivity(
@@ -331,8 +328,7 @@ class _TransactionListScreenState extends ConsumerState<TransactionListScreen> {
             entry: entry,
             categoryById: categoryById,
             accountNames: accountNames,
-            transfersById: transfersById,
-            defaultAccountId: defaultAccountId,
+            feeTransfers: feeTransfers,
             showDate: !byDate,
             showAccount: true,
           ).entrance(context, index: index, axis: Axis.horizontal),

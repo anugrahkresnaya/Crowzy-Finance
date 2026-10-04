@@ -6,7 +6,7 @@ import '../../../core/constants/hive_constants.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
 import '../../accounts/providers/account_provider.dart';
-import '../../accounts/repository/account_repository.dart';
+import '../../accounts/utils/transfers.dart';
 import '../../accounts/utils/account_balance.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../repository/transaction_repository.dart';
@@ -49,12 +49,10 @@ class TransactionList extends _$TransactionList {
       final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) throw StateError('No authenticated user');
 
-      // No account given (the AI flow, for one) means the default Cash account.
-      final account = accountId ?? ref.read(defaultAccountIdProvider);
-      // The account row must exist locally to be pushed ahead of the transaction.
-      if (account == AccountRepository.defaultIdFor(userId)) {
-        await ref.read(accountRepositoryProvider).ensureDefault(userId);
-      }
+      // No account given (the AI flow, for one) starts on the main account,
+      // else the one last used; with neither it is left unassigned.
+      final account =
+          accountId ?? ref.read(mainAccountIdProvider) ?? ref.read(lastUsedAccountIdProvider);
 
       final now = DateTime.now();
       await repository.save(
@@ -113,9 +111,17 @@ String? lastUsedCategoryId(Ref ref, TransactionType type) {
   return box.get('$_lastUsedCategoryKeyPrefix${type.name}') as String?;
 }
 
-/// Everything held across all accounts: opening balances plus every
-/// transaction. Transfers only move money between accounts, so they leave it
-/// unchanged (a transfer's fee is a transaction and does).
+/// Transactions that are spending or earning, which leaves out the two legs
+/// of every transfer. Reports, budgets, summaries and the AI read this.
+@riverpod
+List<TransactionModel> spendingTransactions(Ref ref) {
+  final transactions = ref.watch(transactionListProvider).value ?? const [];
+  return transactions.where((t) => !isTransferLeg(t)).toList();
+}
+
+/// Everything held across all accounts: initial balances plus every
+/// transaction. A transfer's legs cancel, so it leaves this unchanged (its fee
+/// is an expense and does not).
 @riverpod
 double allTimeBalance(Ref ref) {
   final transactions = ref.watch(transactionListProvider).value ?? const [];
@@ -125,11 +131,10 @@ double allTimeBalance(Ref ref) {
 
 @riverpod
 MonthSummary thisMonthSummary(Ref ref) {
-  final transactions = ref.watch(transactionListProvider).value ?? const [];
   final accounts = ref.watch(accountListProvider).value ?? const [];
   return summarizeMonth(
-    transactions,
+    ref.watch(spendingTransactionsProvider),
     DateTime.now(),
-    openingBalance: openingTotal(accounts),
+    initialBalance: initialTotal(accounts),
   );
 }

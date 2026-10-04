@@ -22,23 +22,24 @@ void main() {
     return c;
   }
 
-  test('a fresh install is seeded with every default, Fees included', () async {
+  test('a fresh install is seeded with every default, the transfer categories included', () async {
     final categories = await container().read(categoryListProvider.future);
 
     expect(categories, hasLength(DefaultCategories.build().length));
-    expect(categories.any((c) => c.id == DefaultCategories.feesId), isTrue);
+    expect(categories.any((c) => c.id == DefaultCategories.transferInId), isTrue);
+    expect(categories.any((c) => c.id == DefaultCategories.transferOutId), isTrue);
   });
 
-  test('an install seeded before Fees existed gets it added, and nothing else changes', () async {
-    for (final category in DefaultCategories.build().where((c) => c.id != DefaultCategories.feesId)) {
+  test('an install seeded before the transfer categories existed gets them added, and nothing else changes', () async {
+    for (final category in DefaultCategories.build().where((c) => !DefaultCategories.isTransferCategory(c.id))) {
       await box.put(category.id, category.toJson());
     }
     final before = box.length;
 
     final categories = await container().read(categoryListProvider.future);
 
-    expect(box.length, before + 1);
-    expect(categories.where((c) => c.id == DefaultCategories.feesId), hasLength(1));
+    expect(box.length, before + 2);
+    expect(categories.where((c) => DefaultCategories.isTransferCategory(c.id)), hasLength(2));
   });
 
   test('a default that was deleted stays deleted instead of coming back', () async {

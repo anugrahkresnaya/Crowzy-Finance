@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/app_page_route.dart';
 import '../../../../data/models/category_model.dart';
-import '../../../../data/models/transfer_model.dart';
+import '../../../../data/models/transfer.dart';
 import '../../../accounts/ui/transfer_receipt_screen.dart';
 import '../../../accounts/ui/widgets/transfer_tile.dart';
 import '../../utils/activity_feed.dart';
@@ -18,8 +18,7 @@ class ActivityRow extends StatelessWidget {
     required this.entry,
     required this.categoryById,
     required this.accountNames,
-    required this.transfersById,
-    required this.defaultAccountId,
+    required this.feeTransfers,
     this.showDate = true,
     this.showAccount = false,
     this.showFeeRoute,
@@ -31,10 +30,9 @@ class ActivityRow extends StatelessWidget {
 
   /// Account names by id.
   final Map<String, String> accountNames;
-  final Map<String, TransferModel> transfersById;
 
-  /// Where a transaction with no account belongs.
-  final String? defaultAccountId;
+  /// A transfer's fee expense id → its transfer, so a fee reads as part of it.
+  final Map<String, Transfer> feeTransfers;
 
   final bool showDate;
 
@@ -49,7 +47,7 @@ class ActivityRow extends StatelessWidget {
   /// Set on an account's page, so its transfers read from that account's side.
   final String? perspectiveAccountId;
 
-  String _name(String id) => accountNames[id] ?? 'Unknown account';
+  String _name(String? id) => accountNames[id] ?? 'Unknown account';
 
   @override
   Widget build(BuildContext context) {
@@ -64,14 +62,14 @@ class ActivityRow extends StatelessWidget {
           onTap: () => pushSlide(context, TransferReceiptScreen(transferId: transfer.id)),
         );
       case TransactionEntry(:final transaction):
-        final fee = transaction.transferId == null ? null : transfersById[transaction.transferId];
+        final fee = feeTransfers[transaction.id];
         String? accountLabel;
         if (fee != null) {
           if (showFeeRoute ?? showAccount) {
             accountLabel = '${_name(fee.fromAccountId)} → ${_name(fee.toAccountId)}';
           }
         } else if (showAccount) {
-          final id = transaction.accountId ?? defaultAccountId;
+          final id = transaction.accountId;
           if (id != null) accountLabel = accountNames[id];
         }
         return TransactionTile(

@@ -26,6 +26,7 @@ void main() {
       AlertType.overspend: 'Overspending',
       AlertType.wishlistOffPace: 'Goal off pace',
       AlertType.incomeDrop: 'Income drop',
+      AlertType.budgetExceeded: 'Over budget',
       AlertType.budgetLimit: 'Nearing a limit',
       AlertType.incomeReceived: 'Income received',
       AlertType.goalOnTrack: 'Goal on track',
@@ -101,13 +102,15 @@ void main() {
   });
 
   group('AlertType', () {
-    test('only income received and goal on track are good news', () {
+    test('only income received and goal on track are good news, and going over budget is not', () {
+      expect(AlertType.budgetExceeded.isGoodNews, isFalse);
       final good = AlertType.values.where((t) => t.isGoodNews).toSet();
       expect(good, {AlertType.incomeReceived, AlertType.goalOnTrack});
     });
 
-    test('the new types round-trip through the server\'s values', () {
+    test('the types round-trip through the server\'s values, budget_exceeded included', () {
       const values = {
+        'budget_exceeded': AlertType.budgetExceeded,
         'budget_limit': AlertType.budgetLimit,
         'income_received': AlertType.incomeReceived,
         'goal_on_track': AlertType.goalOnTrack,
