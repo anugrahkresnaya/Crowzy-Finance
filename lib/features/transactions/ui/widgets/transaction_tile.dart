@@ -12,7 +12,7 @@ import '../../../../data/models/transaction_type.dart';
 
 /// One transaction as a hairline-divided row. The note is the headline when
 /// there is one (the category name otherwise); the line beneath combines the
-/// date (when [showDate]) and the category.
+/// date (when [showDate]), the category and, if given, the account.
 class TransactionTile extends StatelessWidget {
   const TransactionTile({
     super.key,
@@ -20,12 +20,17 @@ class TransactionTile extends StatelessWidget {
     required this.category,
     this.onTap,
     this.showDate = true,
+    this.accountLabel,
   });
 
   final TransactionModel transaction;
   final CategoryModel? category;
   final VoidCallback? onTap;
   final bool showDate;
+
+  /// The account the transaction belongs to (or, for a transfer fee, the
+  /// transfer's route), added to the line beneath. Hidden when null.
+  final String? accountLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +42,7 @@ class TransactionTile extends StatelessWidget {
     final subtitle = [
       if (showDate) DateFormatter.relativeDay(transaction.date),
       if (note != null) categoryName,
+      ?accountLabel,
     ].join(' · ');
 
     return PressScale(
