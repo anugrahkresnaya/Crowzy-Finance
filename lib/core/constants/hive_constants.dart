@@ -5,6 +5,8 @@ class HiveConstants {
   static const String transactionsBox = 'transactions';
   static const String wishlistBox = 'wishlist';
   static const String budgetsBox = 'budgets';
+  static const String accountsBox = 'accounts';
+  static const String transfersBox = 'transfers';
   static const String alertsBox = 'alerts';
   static const String syncMetaBox = 'sync_meta';
 }

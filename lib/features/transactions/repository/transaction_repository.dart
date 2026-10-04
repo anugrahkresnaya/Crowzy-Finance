@@ -15,6 +15,13 @@ class TransactionRepository {
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
+  /// The row with [id] even when it is soft-deleted, or null if there is none.
+  TransactionModel? findIncludingDeleted(String id) {
+    final raw = _box.get(id);
+    if (raw == null) return null;
+    return TransactionModel.fromJson(Map<String, dynamic>.from(raw));
+  }
+
   Future<void> save(TransactionModel transaction) async {
     await _box.put(transaction.id, transaction.toJson());
   }
