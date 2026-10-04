@@ -8,6 +8,8 @@ import '../../../core/utils/app_page_route.dart';
 import '../../../core/widgets/balance_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/entrance.dart';
+import '../../accounts/providers/account_provider.dart';
+import '../../accounts/ui/accounts_screen.dart';
 import '../../alerts/providers/alert_provider.dart';
 import '../../alerts/ui/alerts_list_screen.dart';
 import '../../alerts/ui/widgets/alerts_card.dart';
@@ -38,6 +40,9 @@ class HomeScreen extends ConsumerWidget {
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final categoryById = {for (final c in categories) c.id: c};
 
+    final accounts = (ref.watch(accountListProvider).value ?? const [])
+        .where((a) => !a.isArchived)
+        .toList();
     final goal = activeGoals.isEmpty ? null : activeGoals.first;
     final hasNotice = unreadAlerts.isNotEmpty;
 
@@ -58,6 +63,11 @@ class HomeScreen extends ConsumerWidget {
               monthIncome: month.income,
               monthExpense: month.expense,
               changePercent: month.changePercent,
+              accountsSummary: accounts.isEmpty
+                  ? null
+                  : '${accounts.length} account${accounts.length == 1 ? '' : 's'}'
+                      ' · ${accounts.map((a) => a.name).join(', ')}',
+              onManageAccounts: () => pushSlide(context, const AccountsScreen()),
             ).entrance(
               context,
               delay: const Duration(milliseconds: 80),

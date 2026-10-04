@@ -1,10 +1,16 @@
 import 'package:crowzy_finance/core/theme/app_theme.dart';
+import 'package:crowzy_finance/data/models/account_model.dart';
+import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/alert_model.dart';
 import 'package:crowzy_finance/data/models/alert_type.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/data/models/wishlist_model.dart';
+import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
+import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
+import 'package:crowzy_finance/features/accounts/ui/accounts_screen.dart';
+import 'package:crowzy_finance/data/models/transfer_model.dart';
 import 'package:crowzy_finance/features/alerts/providers/alert_provider.dart';
 import 'package:crowzy_finance/features/auth/providers/auth_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
@@ -23,6 +29,28 @@ class _FakeTransactions extends TransactionList {
   @override
   Future<List<TransactionModel>> build() async => _all;
 }
+
+List<AccountModel> _accounts = [];
+
+class _FakeAccounts extends AccountList {
+  @override
+  Future<List<AccountModel>> build() async => _accounts;
+}
+
+class _FakeTransfers extends TransferList {
+  @override
+  Future<List<TransferModel>> build() async => const [];
+}
+
+AccountModel _account(String id, String name, {bool archived = false}) => AccountModel(
+      id: id,
+      userId: 'u',
+      name: name,
+      type: AccountType.bank,
+      isArchived: archived,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
 
 class _FakeCategories extends CategoryList {
   @override
@@ -79,8 +107,10 @@ void main() {
     List<TransactionModel> recent = const [],
     List<WishlistModel> goals = const [],
     List<AlertModel> alerts = const [],
+    List<AccountModel>? accounts,
   }) async {
     _all = recent;
+    _accounts = accounts ?? [_account('a', 'BCA'), _account('b', 'DANA'), _account('c', 'Cash')];
     await tester.binding.setSurfaceSize(const Size(390, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -97,6 +127,8 @@ void main() {
           activeWishlistGoalsProvider.overrideWithValue(goals),
           unreadAlertsProvider.overrideWithValue(alerts),
           categoryListProvider.overrideWith(_FakeCategories.new),
+          accountListProvider.overrideWith(_FakeAccounts.new),
+          transferListProvider.overrideWith(_FakeTransfers.new),
         ],
         child: MaterialApp(theme: AppTheme.dark, home: const HomeScreen()),
       ),
@@ -172,5 +204,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TRANSACTION RECEIPT'), findsOneWidget);
+  });
+
+  group('accounts strip', () {
+    testWidgets('lists the active accounts under the balance', (tester) async {
+      await pumpHome(tester);
+
+      expect(find.text('3 accounts · BCA, DANA, Cash'), findsOneWidget);
+      expect(find.text('Manage ›'), findsOneWidget);
+    });
+
+    testWidgets('leaves archived accounts out and uses the singular for one', (tester) async {
+      await pumpHome(tester, accounts: [_account('a', 'BCA'), _account('b', 'Old', archived: true)]);
+
+      expect(find.text('1 account · BCA'), findsOneWidget);
+    });
+
+    testWidgets('is hidden until accounts have loaded', (tester) async {
+      await pumpHome(tester, accounts: []);
+
+      expect(find.text('Manage ›'), findsNothing);
+    });
+
+    testWidgets('Manage opens the Accounts screen', (tester) async {
+      await pumpHome(tester);
+
+      await tester.tap(find.text('Manage ›'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AccountsScreen), findsOneWidget);
+    });
   });
 }
