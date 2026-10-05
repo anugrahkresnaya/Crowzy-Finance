@@ -178,6 +178,22 @@ void main() {
     expect(find.text('LEFT CASH'), findsOneWidget);
   });
 
+  testWidgets('one half of a transfer, with its partner missing, can be deleted but not edited', (tester) async {
+    _transactions = [legsOf(fakeTransfer('lonely', from: 'cash', to: 'bca', amount: 90000)).first];
+    await pump(tester, id: 'lonely-out');
+
+    expect(find.text('Edit'), findsNothing);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(find.textContaining('one half of a transfer'), findsOneWidget);
+  });
+
+  testWidgets('an ordinary transaction has no half-transfer note', (tester) async {
+    await pump(tester);
+
+    expect(find.textContaining('one half of a transfer'), findsNothing);
+    expect(find.text('Edit'), findsOneWidget);
+  });
+
   testWidgets('without a note the category is the headline', (tester) async {
     _transactions = [_tx(note: null)];
     await pump(tester);

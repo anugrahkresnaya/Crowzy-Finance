@@ -26,6 +26,12 @@ class TransactionRepository {
     await _box.put(transaction.id, transaction.toJson());
   }
 
+  /// Removes a row outright. Only for undoing a write that has not synced yet;
+  /// anything that may have reached the server is soft-deleted instead.
+  Future<void> remove(String id) async {
+    await _box.delete(id);
+  }
+
   bool isCategoryInUse(String categoryId) {
     return _box.values.any((raw) => raw['category_id'] == categoryId);
   }

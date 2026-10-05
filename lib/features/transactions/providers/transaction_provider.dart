@@ -49,10 +49,9 @@ class TransactionList extends _$TransactionList {
       final userId = ref.read(currentUserProvider)?.id;
       if (userId == null) throw StateError('No authenticated user');
 
-      // No account given (the AI flow, for one) starts on the main account,
-      // else the one last used; with neither it is left unassigned.
-      final account =
-          accountId ?? ref.read(mainAccountIdProvider) ?? ref.read(lastUsedAccountIdProvider);
+      // Exactly the account given; null means no account. Callers that want a
+      // sensible start use startingAccountIdProvider.
+      final account = accountId;
 
       final now = DateTime.now();
       await repository.save(

@@ -148,6 +148,55 @@ abstract class _$AccountList extends $AsyncNotifier<List<AccountModel>> {
   }
 }
 
+/// The account a new transaction starts on: the main one, else the one last
+/// used, else the first, as long as it is active. Null when there is none.
+
+@ProviderFor(startingAccountId)
+final startingAccountIdProvider = StartingAccountIdProvider._();
+
+/// The account a new transaction starts on: the main one, else the one last
+/// used, else the first, as long as it is active. Null when there is none.
+
+final class StartingAccountIdProvider
+    extends $FunctionalProvider<String?, String?, String?>
+    with $Provider<String?> {
+  /// The account a new transaction starts on: the main one, else the one last
+  /// used, else the first, as long as it is active. Null when there is none.
+  StartingAccountIdProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'startingAccountIdProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$startingAccountIdHash();
+
+  @$internal
+  @override
+  $ProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  String? create(Ref ref) {
+    return startingAccountId(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
+String _$startingAccountIdHash() => r'e151778334c4195a0e6cc9a764eb691028a7ac6f';
+
 /// The account marked as main, which new transactions and transfers start on.
 /// Null when none is, or the main one is archived.
 

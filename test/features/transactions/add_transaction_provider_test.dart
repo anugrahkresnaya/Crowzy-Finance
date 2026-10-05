@@ -60,31 +60,22 @@ void main() {
     expect(c.read(lastUsedAccountIdProvider), 'bca');
   });
 
-  test('with no account given it starts on the main account', () async {
+  test('no account given means no account, even when a main or last used one exists', () async {
     final c = await container(main: 'dana');
     await meta.put('last_used_account', 'bca');
 
     await add(c);
 
-    expect(c.read(transactionListProvider).value!.single.accountId, 'dana');
+    expect(c.read(transactionListProvider).value!.single.accountId, isNull);
   });
 
-  test('with no main account it uses the account last used', () async {
+  test('choosing no account does not change the remembered one', () async {
     final c = await container();
     await meta.put('last_used_account', 'bca');
 
     await add(c);
 
-    expect(c.read(transactionListProvider).value!.single.accountId, 'bca');
-  });
-
-  test('with neither it is left on no account, not given an invented one', () async {
-    final c = await container();
-
-    await add(c);
-
-    expect(c.read(transactionListProvider).value!.single.accountId, isNull);
-    expect(meta.get('last_used_account'), isNull);
+    expect(meta.get('last_used_account'), 'bca');
   });
 
   test('the last used account follows the latest transaction', () async {

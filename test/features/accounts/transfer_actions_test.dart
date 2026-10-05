@@ -9,10 +9,27 @@ import 'package:crowzy_finance/features/accounts/utils/transfers.dart';
 import 'package:crowzy_finance/features/auth/providers/auth_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
+import 'package:crowzy_finance/features/transactions/repository/transaction_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// A repository that fails its n-th save, to see what a transfer does when a
+/// write in the middle goes wrong.
+class _FlakyRepository extends TransactionRepository {
+  _FlakyRepository(super.box, {required this.failOnSave});
+
+  final int failOnSave;
+  int saves = 0;
+
+  @override
+  Future<void> save(TransactionModel transaction) async {
+    saves++;
+    if (saves == failOnSave) throw StateError('disk full');
+    await super.save(transaction);
+  }
+}
 
 void main() {
   late Box<Map> transactionBox;
@@ -331,6 +348,119 @@ void main() {
       await rows();
 
       expect(container.read(transferListProvider).single.note, 'two');
+    });
+  });
+
+  group('when a write goes wrong', () {
+    ProviderContainer flaky(int failOnSave) {
+      final repository = _FlakyRepository(transactionBox, failOnSave: failOnSave);
+      final c = ProviderContainer(overrides: [
+        transactionBoxProvider.overrideWithValue(transactionBox),
+        transactionRepositoryProvider.overrideWithValue(repository),
+        categoryBoxProvider.overrideWithValue(categoryBox),
+        currentUserProvider.overrideWithValue(
+          const User(id: 'u1', appMetadata: {}, userMetadata: {}, aud: '', createdAt: ''),
+        ),
+      ]);
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    Future<void> make(ProviderContainer c, {double fee = 2500}) => c.read(transferActionsProvider).create(
+          fromAccountId: 'bca',
+          toAccountId: 'dana',
+          amount: 390000,
+          fee: fee,
+          date: DateTime(2026, 10, 3),
+          note: 'topup',
+        );
+
+    test('a failure on the second leg takes the first one back', () async {
+      await expectLater(make(flaky(2)), throwsStateError);
+
+      expect(transactionBox.isEmpty, isTrue);
+    });
+
+    test('a failure on the fee takes both legs back, so no half transfer is left', () async {
+      await expectLater(make(flaky(3)), throwsStateError);
+
+      expect(transactionBox.isEmpty, isTrue);
+    });
+
+    test('an earlier, complete transfer is not touched by a later failure', () async {
+      await create(fee: 100);
+      final before = transactionBox.length;
+
+      await expectLater(make(flaky(2)), throwsStateError);
+
+      expect(transactionBox.length, before);
+    });
+
+    test('a failure while changing a transfer puts every row back as it was', () async {
+      await create(fee: 2500);
+      await rows();
+      final transfer = container.read(transferListProvider).single;
+      final before = {for (final k in transactionBox.keys) k: Map<String, dynamic>.from(transactionBox.get(k)!)};
+
+      // Save 1 and 2 are the legs; 3 is the fee row.
+      final c = flaky(3);
+      await expectLater(
+        c.read(transferActionsProvider).update(
+              transfer,
+              fromAccountId: 'cash',
+              toAccountId: 'jago',
+              amount: 1,
+              fee: 9999,
+              date: DateTime(2026, 11, 1),
+            ),
+        throwsStateError,
+      );
+
+      final after = {for (final k in transactionBox.keys) k: Map<String, dynamic>.from(transactionBox.get(k)!)};
+      expect(after, before);
+    });
+
+    test('a failure while adding a fee to a fee-less transfer leaves no stray fee row', () async {
+      await create();
+      await rows();
+      final transfer = container.read(transferListProvider).single;
+      final before = transactionBox.length;
+
+      await expectLater(
+        flaky(3).read(transferActionsProvider).update(
+              transfer,
+              fromAccountId: 'bca',
+              toAccountId: 'dana',
+              amount: 390000,
+              fee: 1000,
+              date: DateTime(2026, 10, 3, 7, 20),
+              note: 'topup',
+            ),
+        throwsStateError,
+      );
+
+      expect(transactionBox.length, before);
+    });
+
+    test('changing a transfer that has lost a leg is refused, and nothing is changed', () async {
+      await create();
+      await rows();
+      final transfer = container.read(transferListProvider).single;
+      await transactionBox.delete(transfer.inLegId);
+      final before = {for (final k in transactionBox.keys) k: Map<String, dynamic>.from(transactionBox.get(k)!)};
+
+      await expectLater(
+        actions().update(
+          transfer,
+          fromAccountId: 'bca',
+          toAccountId: 'dana',
+          amount: 1,
+          date: DateTime(2026, 11, 1),
+        ),
+        throwsStateError,
+      );
+
+      expect({for (final k in transactionBox.keys) k: Map<String, dynamic>.from(transactionBox.get(k)!)}, before);
     });
   });
 

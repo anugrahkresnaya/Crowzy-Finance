@@ -160,13 +160,7 @@ class _AddEditTransactionScreenState
     if (accounts.isNotEmpty && !_accountInitialized) {
       _accountInitialized = true;
       if (!_isEditing && (_accountId == null || !active.any((a) => a.id == _accountId))) {
-        final main = ref.read(mainAccountIdProvider);
-        final lastUsed = ref.read(lastUsedAccountIdProvider);
-        _accountId = active.any((a) => a.id == main)
-            ? main
-            : active.any((a) => a.id == lastUsed)
-                ? lastUsed
-                : active.firstOrNull?.id;
+        _accountId = ref.read(startingAccountIdProvider);
       }
     }
     final account = accounts.where((a) => a.id == _accountId).firstOrNull;

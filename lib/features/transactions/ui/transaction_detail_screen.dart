@@ -14,6 +14,7 @@ import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
 import '../../accounts/providers/account_provider.dart';
 import '../../accounts/providers/transfer_provider.dart';
+import '../../accounts/utils/transfers.dart';
 import '../../accounts/ui/transfer_receipt_screen.dart';
 import '../../categories/providers/category_provider.dart';
 import '../providers/transaction_provider.dart';
@@ -50,6 +51,9 @@ class TransactionDetailScreen extends ConsumerWidget {
     final feeTransfer = ref.watch(feeTransfersProvider)[transactionId];
     if (feeTransfer != null) return TransferReceiptScreen(transferId: feeTransfer.id);
 
+    // A transfer leg that did not pair up is not spending, and editing it as if
+    // it were would tag it as both.
+    final isHalfTransfer = transaction != null && isTransferLeg(transaction);
     final accounts = ref.watch(accountListProvider).value ?? const [];
     final accountName = accounts.firstWhereOrNull((a) => a.id == transaction?.accountId)?.name;
 
@@ -69,19 +73,34 @@ class TransactionDetailScreen extends ConsumerWidget {
                     category: category,
                     accountName: accountName,
                   ),
+                  if (isHalfTransfer)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Text(
+                        'This is one half of a transfer whose other half is missing. It '
+                        'can be deleted but not edited.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: AppColors.textMuted, height: 1.5),
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => pushSlide(
-                            context,
-                            AddEditTransactionScreen(transaction: transaction),
+                      if (!isHalfTransfer) ...[
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => pushSlide(
+                              context,
+                              AddEditTransactionScreen(transaction: transaction),
+                            ),
+                            child: const Text('Edit'),
                           ),
-                          child: const Text('Edit'),
                         ),
-                      ),
-                      const SizedBox(width: 10),
+                        const SizedBox(width: 10),
+                      ],
                       Expanded(
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(

@@ -78,33 +78,54 @@ class TransferActions {
       required TransactionType type,
       required String categoryId,
       required String accountId,
-    }) =>
-        TransactionModel(
-          id: const Uuid().v4(),
-          userId: userId,
-          amount: amount,
-          type: type,
-          categoryId: categoryId,
-          note: note,
-          accountId: accountId,
-          transferGroupId: group,
-          date: date,
-          createdAt: now,
-          updatedAt: now,
-          isSynced: false,
-        );
+    }) => TransactionModel(
+      id: const Uuid().v4(),
+      userId: userId,
+      amount: amount,
+      type: type,
+      categoryId: categoryId,
+      note: note,
+      accountId: accountId,
+      transferGroupId: group,
+      date: date,
+      createdAt: now,
+      updatedAt: now,
+      isSynced: false,
+    );
 
-    await repository.save(leg(
-      type: TransactionType.income,
-      categoryId: DefaultCategories.transferInId,
-      accountId: toAccountId,
-    ));
-    await repository.save(leg(
-      type: TransactionType.expense,
-      categoryId: DefaultCategories.transferOutId,
-      accountId: fromAccountId,
-    ));
-    if (fee > 0) await _writeFee(group, userId, fee, fromAccountId, date, now);
+    // A transfer is several writes. If one fails, the ones before it are taken
+    // back, so a half-written transfer never shows up in the balances.
+    final written = <String>[];
+    Future<void> write(TransactionModel row) async {
+      await repository.save(row);
+      written.add(row.id);
+    }
+
+    try {
+      await write(
+        leg(
+          type: TransactionType.income,
+          categoryId: DefaultCategories.transferInId,
+          accountId: toAccountId,
+        ),
+      );
+      await write(
+        leg(
+          type: TransactionType.expense,
+          categoryId: DefaultCategories.transferOutId,
+          accountId: fromAccountId,
+        ),
+      );
+      if (fee > 0) {
+        await _writeFee(group, userId, fee, fromAccountId, date, now);
+      }
+    } catch (_) {
+      for (final id in [...written, feeIdFor(group)]) {
+        await repository.remove(id);
+      }
+      _ref.invalidate(transactionListProvider);
+      rethrow;
+    }
 
     _ref.invalidate(transactionListProvider);
   }
@@ -122,27 +143,48 @@ class TransferActions {
     final repository = _ref.read(transactionRepositoryProvider);
     final now = DateTime.now();
 
-    Future<void> change(String id, String accountId) async {
-      final leg = repository.findIncludingDeleted(id);
-      if (leg == null) return;
-      await repository.save(leg.copyWith(
-        amount: amount,
-        accountId: accountId,
-        note: note,
-        date: date,
-        updatedAt: now,
-        isSynced: false,
-      ));
+    // Both legs must be there to change. A transfer that has lost one is not a
+    // transfer any more, and quietly changing half of it would split the pair.
+    final out = repository.findIncludingDeleted(transfer.outLegId);
+    final into = repository.findIncludingDeleted(transfer.inLegId);
+    if (out == null || into == null) {
+      throw StateError('This transfer is incomplete and cannot be changed');
     }
-
-    await change(transfer.outLegId, fromAccountId);
-    await change(transfer.inLegId, toAccountId);
-
     final feeRow = repository.findIncludingDeleted(feeIdFor(transfer.id));
-    if (fee > 0) {
-      await _writeFee(transfer.id, userId, fee, fromAccountId, date, now);
-    } else if (feeRow != null && !feeRow.isDeleted) {
-      await repository.save(feeRow.copyWith(isDeleted: true, updatedAt: now, isSynced: false));
+    final before = [out, into, ?feeRow];
+
+    try {
+      for (final (leg, accountId) in [
+        (out, fromAccountId),
+        (into, toAccountId),
+      ]) {
+        await repository.save(
+          leg.copyWith(
+            amount: amount,
+            accountId: accountId,
+            note: note,
+            date: date,
+            updatedAt: now,
+            isSynced: false,
+          ),
+        );
+      }
+
+      if (fee > 0) {
+        await _writeFee(transfer.id, userId, fee, fromAccountId, date, now);
+      } else if (feeRow != null && !feeRow.isDeleted) {
+        await repository.save(
+          feeRow.copyWith(isDeleted: true, updatedAt: now, isSynced: false),
+        );
+      }
+    } catch (_) {
+      // Put every row back as it was, and remove a fee row that did not exist.
+      for (final row in before) {
+        await repository.save(row);
+      }
+      if (feeRow == null) await repository.remove(feeIdFor(transfer.id));
+      _ref.invalidate(transactionListProvider);
+      rethrow;
     }
 
     _ref.invalidate(transactionListProvider);
@@ -152,10 +194,16 @@ class TransferActions {
     final repository = _ref.read(transactionRepositoryProvider);
     final now = DateTime.now();
 
-    for (final id in [transfer.outLegId, transfer.inLegId, feeIdFor(transfer.id)]) {
+    for (final id in [
+      transfer.outLegId,
+      transfer.inLegId,
+      feeIdFor(transfer.id),
+    ]) {
       final row = repository.findIncludingDeleted(id);
       if (row == null || row.isDeleted) continue;
-      await repository.save(row.copyWith(isDeleted: true, updatedAt: now, isSynced: false));
+      await repository.save(
+        row.copyWith(isDeleted: true, updatedAt: now, isSynced: false),
+      );
     }
 
     _ref.invalidate(transactionListProvider);
@@ -200,7 +248,8 @@ class TransferActions {
     final repository = _ref.read(categoryRepositoryProvider);
     for (final category in repository.getAll()) {
       if (category.type == TransactionType.expense &&
-          category.name.trim().toLowerCase() == adminFeeCategoryName.toLowerCase()) {
+          category.name.trim().toLowerCase() ==
+              adminFeeCategoryName.toLowerCase()) {
         return category.id;
       }
     }

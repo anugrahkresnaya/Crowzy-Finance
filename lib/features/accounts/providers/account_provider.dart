@@ -6,6 +6,7 @@ import '../../../core/constants/hive_constants.dart';
 import '../../../data/models/account_model.dart';
 import '../../../data/models/account_type.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../transactions/providers/transaction_provider.dart';
 import '../repository/account_repository.dart';
 
 part 'account_provider.g.dart';
@@ -59,6 +60,22 @@ class AccountList extends _$AccountList {
       return repository.getAll();
     });
   }
+}
+
+/// The account a new transaction starts on: the main one, else the one last
+/// used, else the first, as long as it is active. Null when there is none.
+@riverpod
+String? startingAccountId(Ref ref) {
+  final active = (ref.watch(accountListProvider).value ?? const <AccountModel>[])
+      .where((a) => !a.isArchived)
+      .toList();
+  bool isActive(String? id) => id != null && active.any((a) => a.id == id);
+
+  final main = ref.watch(mainAccountIdProvider);
+  if (isActive(main)) return main;
+  final lastUsed = ref.watch(lastUsedAccountIdProvider);
+  if (isActive(lastUsed)) return lastUsed;
+  return active.firstOrNull?.id;
 }
 
 /// The account marked as main, which new transactions and transfers start on.
