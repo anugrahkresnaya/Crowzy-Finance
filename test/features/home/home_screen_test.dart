@@ -8,11 +8,13 @@ import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
 import 'package:crowzy_finance/data/models/wishlist_model.dart';
 import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
+import 'package:crowzy_finance/features/accounts/providers/transfer_provider.dart';
 import 'package:crowzy_finance/features/accounts/ui/accounts_screen.dart';
 import 'package:crowzy_finance/data/models/transfer.dart';
 import 'package:crowzy_finance/features/alerts/providers/alert_provider.dart';
 import 'package:crowzy_finance/features/auth/providers/auth_provider.dart';
 import 'package:crowzy_finance/features/categories/providers/category_provider.dart';
+import 'package:crowzy_finance/core/widgets/root_shell.dart';
 import 'package:crowzy_finance/features/home/ui/home_screen.dart';
 import 'package:crowzy_finance/features/transactions/providers/activity_provider.dart';
 import 'package:crowzy_finance/features/transactions/providers/transaction_provider.dart';
@@ -35,6 +37,14 @@ class _FakeTransactions extends TransactionList {
 }
 
 List<AccountModel> _accounts = [];
+
+class _NoMemory implements LastTransferSource {
+  @override
+  String? get value => null;
+
+  @override
+  Future<void> save(String accountId) async {}
+}
 
 class _FakeAccounts extends AccountList {
   @override
@@ -108,6 +118,7 @@ void main() {
     List<WishlistModel> goals = const [],
     List<AlertModel> alerts = const [],
     List<AccountModel>? accounts,
+    Widget home = const HomeScreen(),
   }) async {
     // A transfer is stored as its two legs, which is how the receipt finds it.
     _all = [...recent, for (final t in transfers) ...legsOf(t)];
@@ -129,8 +140,12 @@ void main() {
           unreadAlertsProvider.overrideWithValue(alerts),
           categoryListProvider.overrideWith(_FakeCategories.new),
           accountListProvider.overrideWith(_FakeAccounts.new),
+          // What the forms read when the + button opens them.
+          lastTransferSourceProvider.overrideWithValue(_NoMemory()),
+          lastUsedAccountIdProvider.overrideWithValue(null),
+          lastUsedCategoryIdProvider.overrideWith((ref, type) => null),
         ],
-        child: MaterialApp(theme: AppTheme.dark, home: const HomeScreen()),
+        child: MaterialApp(theme: AppTheme.dark, home: home),
       ),
     );
     await tester.pumpAndSettle();
@@ -279,10 +294,36 @@ void main() {
       expect(find.text('1 account · BCA'), findsOneWidget);
     });
 
-    testWidgets('is hidden until accounts have loaded', (tester) async {
+    testWidgets('is still there with no accounts, as the way in to add the first', (tester) async {
       await pumpHome(tester, accounts: []);
 
-      expect(find.text('Manage ›'), findsNothing);
+      expect(find.text('No accounts yet'), findsOneWidget);
+      expect(find.text('Manage ›'), findsOneWidget);
+
+      await tester.tap(find.text('Manage ›'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountsScreen), findsOneWidget);
+      expect(find.text('Add your first account with the + button'), findsOneWidget);
+    });
+
+    testWidgets('says so when every account is archived', (tester) async {
+      await pumpHome(tester, accounts: [_account('a', 'Old', archived: true)]);
+
+      expect(find.text('No accounts yet'), findsOneWidget);
+    });
+
+    testWidgets('Home also lists Accounts among the places to manage, ahead of Categories', (tester) async {
+      await pumpHome(tester);
+
+      expect(find.text('Accounts'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Accounts')).dy,
+        lessThan(tester.getTopLeft(find.text('Categories')).dy),
+      );
+
+      await tester.tap(find.text('Accounts'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AccountsScreen), findsOneWidget);
     });
 
     testWidgets('Manage opens the Accounts screen', (tester) async {
@@ -292,6 +333,46 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AccountsScreen), findsOneWidget);
+    });
+  });
+
+  group('the + button in the navigation bar', () {
+    testWidgets('opens the Add chooser with Expense, Income and Transfer', (tester) async {
+      await pumpHome(tester, home: const RootShell());
+
+      await tester.tap(find.bySemanticsLabel('Add transaction'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('What happened?'), findsOneWidget);
+      expect(find.text('Expense'), findsOneWidget);
+      expect(find.text('Income'), findsOneWidget);
+      expect(find.text('Transfer'), findsOneWidget);
+    });
+
+    testWidgets('Transfer opens the transfer form', (tester) async {
+      await pumpHome(tester, home: const RootShell());
+
+      await tester.tap(find.bySemanticsLabel('Add transaction'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Transfer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New transfer'), findsOneWidget);
+    });
+
+    testWidgets('Expense and Income open the transaction form, on the matching side', (tester) async {
+      await pumpHome(tester, home: const RootShell());
+
+      await tester.tap(find.bySemanticsLabel('Add transaction'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Income'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('New transaction'), findsOneWidget);
+      expect(
+        tester.widget<SegmentedButton<TransactionType>>(find.byType(SegmentedButton<TransactionType>)).selected,
+        {TransactionType.income},
+      );
     });
   });
 }

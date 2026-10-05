@@ -66,8 +66,9 @@ class HomeScreen extends ConsumerWidget {
               monthIncome: month.income,
               monthExpense: month.expense,
               changePercent: month.changePercent,
+              // Always there: with no accounts yet it is the way in to add one.
               accountsSummary: accounts.isEmpty
-                  ? null
+                  ? 'No accounts yet'
                   : '${accounts.length} account${accounts.length == 1 ? '' : 's'}'
                       ' · ${accounts.map((a) => a.name).join(', ')}',
               onManageAccounts: () => pushSlide(context, const AccountsScreen()),
@@ -134,6 +135,11 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 28),
             Text('MANAGE', style: AppText.eyebrow(context)),
             const SizedBox(height: 4),
+            _ManageRow(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'Accounts',
+              onTap: () => pushSlide(context, const AccountsScreen()),
+            ),
             _ManageRow(
               icon: Icons.category_outlined,
               label: 'Categories',
