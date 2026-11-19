@@ -44,7 +44,4 @@ const _$AlertTypeEnumMap = {
   AlertType.wishlistOffPace: 'wishlist_off_pace',
   AlertType.incomeDrop: 'income_drop',
   AlertType.budgetExceeded: 'budget_exceeded',
-  AlertType.budgetLimit: 'budget_limit',
-  AlertType.incomeReceived: 'income_received',
-  AlertType.goalOnTrack: 'goal_on_track',
 };

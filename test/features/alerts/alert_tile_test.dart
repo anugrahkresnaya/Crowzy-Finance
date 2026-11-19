@@ -27,9 +27,6 @@ void main() {
       AlertType.wishlistOffPace: 'Goal off pace',
       AlertType.incomeDrop: 'Income drop',
       AlertType.budgetExceeded: 'Over budget',
-      AlertType.budgetLimit: 'Nearing a limit',
-      AlertType.incomeReceived: 'Income received',
-      AlertType.goalOnTrack: 'Goal on track',
     };
 
     for (final entry in titles.entries) {
@@ -73,7 +70,7 @@ void main() {
     expect(hasDot(), isFalse);
   });
 
-  group('good news', () {
+  group('tint', () {
     Color tileColor(WidgetTester tester) {
       final material = tester.widget<Material>(
         find.descendant(of: find.byType(AlertTile), matching: find.byType(Material)).first,
@@ -81,40 +78,26 @@ void main() {
       return material.color!;
     }
 
-    testWidgets('an unread warning is tinted burgundy and unread good news green', (tester) async {
-      await pump(tester, AlertTile(alert: alert(AlertType.budgetLimit)));
+    testWidgets('an unread alert is tinted burgundy and settles to the plain surface once read',
+        (tester) async {
+      await pump(tester, AlertTile(alert: alert(AlertType.budgetExceeded)));
       expect(tileColor(tester), AppColors.noticeBackground);
 
-      await pump(tester, AlertTile(alert: alert(AlertType.incomeReceived)));
-      expect(tileColor(tester), AppColors.hero);
-
-      await pump(tester, AlertTile(alert: alert(AlertType.goalOnTrack)));
-      expect(tileColor(tester), AppColors.hero);
-    });
-
-    testWidgets('once read, both settle to the plain surface', (tester) async {
-      await pump(tester, AlertTile(alert: alert(AlertType.incomeReceived, readAt: DateTime.now())));
-      expect(tileColor(tester), AppColors.surface);
-
-      await pump(tester, AlertTile(alert: alert(AlertType.budgetLimit, readAt: DateTime.now())));
+      await pump(tester, AlertTile(alert: alert(AlertType.budgetExceeded, readAt: DateTime.now())));
       expect(tileColor(tester), AppColors.surface);
     });
   });
 
   group('AlertType', () {
-    test('only income received and goal on track are good news, and going over budget is not', () {
-      expect(AlertType.budgetExceeded.isGoodNews, isFalse);
-      final good = AlertType.values.where((t) => t.isGoodNews).toSet();
-      expect(good, {AlertType.incomeReceived, AlertType.goalOnTrack});
-    });
-
-    test('the types round-trip through the server\'s values, budget_exceeded included', () {
+    test('round-trips through every value the server can send', () {
       const values = {
+        'category_spike': AlertType.categorySpike,
+        'overspend': AlertType.overspend,
+        'wishlist_off_pace': AlertType.wishlistOffPace,
+        'income_drop': AlertType.incomeDrop,
         'budget_exceeded': AlertType.budgetExceeded,
-        'budget_limit': AlertType.budgetLimit,
-        'income_received': AlertType.incomeReceived,
-        'goal_on_track': AlertType.goalOnTrack,
       };
+      expect(values.length, AlertType.values.length);
       for (final entry in values.entries) {
         final model = AlertModel.fromJson({
           'id': 'a1',
