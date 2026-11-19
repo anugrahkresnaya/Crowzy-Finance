@@ -332,50 +332,43 @@ final class ExpenseBreakdownProvider
 
 String _$expenseBreakdownHash() => r'fa3b3c1fb66b9932f41d3ac246780738f6cde0c5';
 
-@ProviderFor(reportCalendarMarkers)
-final reportCalendarMarkersProvider = ReportCalendarMarkersProvider._();
+@ProviderFor(dailySpending)
+final dailySpendingProvider = DailySpendingProvider._();
 
-final class ReportCalendarMarkersProvider
-    extends
-        $FunctionalProvider<
-          Map<DateTime, DayActivity>,
-          Map<DateTime, DayActivity>,
-          Map<DateTime, DayActivity>
-        >
-    with $Provider<Map<DateTime, DayActivity>> {
-  ReportCalendarMarkersProvider._()
+final class DailySpendingProvider
+    extends $FunctionalProvider<List<double>, List<double>, List<double>>
+    with $Provider<List<double>> {
+  DailySpendingProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'reportCalendarMarkersProvider',
+        name: r'dailySpendingProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$reportCalendarMarkersHash();
+  String debugGetCreateSourceHash() => _$dailySpendingHash();
 
   @$internal
   @override
-  $ProviderElement<Map<DateTime, DayActivity>> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
+  $ProviderElement<List<double>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
 
   @override
-  Map<DateTime, DayActivity> create(Ref ref) {
-    return reportCalendarMarkers(ref);
+  List<double> create(Ref ref) {
+    return dailySpending(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(Map<DateTime, DayActivity> value) {
+  Override overrideWithValue(List<double> value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<Map<DateTime, DayActivity>>(value),
+      providerOverride: $SyncValueProvider<List<double>>(value),
     );
   }
 }
 
-String _$reportCalendarMarkersHash() =>
-    r'77c8c5176c828a513f43b8b2638c4e219adeb37f';
+String _$dailySpendingHash() => r'1bf63efe228eb641215c0a4df75ef7ad67fee600';

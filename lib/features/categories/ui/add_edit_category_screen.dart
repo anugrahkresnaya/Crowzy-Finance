@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text.dart';
 import '../../../core/utils/icon_mapper.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../data/models/category_model.dart';
@@ -70,70 +71,104 @@ class _AddEditCategoryScreenState extends ConsumerState<AddEditCategoryScreen> {
     });
 
     final isLoading = ref.watch(categoryListProvider).isLoading;
-    final color = _type == TransactionType.income ? AppColors.income : AppColors.expense;
+    final isEditing = widget.category != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.category == null ? 'Add Category' : 'Edit Category'),
-      ),
+      appBar: AppBar(title: Text(isEditing ? 'Edit category' : 'New category')),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
             children: [
               SegmentedButton<TransactionType>(
+                showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(value: TransactionType.income, label: Text('Income')),
                   ButtonSegment(value: TransactionType.expense, label: Text('Expense')),
+                  ButtonSegment(value: TransactionType.income, label: Text('Income')),
                 ],
                 selected: {_type},
                 onSelectionChanged: isLoading
                     ? null
                     : (selection) => setState(() => _type = selection.first),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 22),
               AppTextField(
                 controller: _nameController,
                 label: 'Name',
                 enabled: !isLoading,
+                textInputAction: TextInputAction.done,
                 validator: (value) =>
                     (value == null || value.trim().isEmpty) ? 'Name is required' : null,
               ),
-              const SizedBox(height: 16),
-              Text('Icon', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
+              const SizedBox(height: 22),
+              Text('ICON', style: AppText.eyebrow(context)),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: IconMapper.keys.map((key) {
-                  final selected = key == _icon;
-                  return InkWell(
-                    onTap: isLoading ? null : () => setState(() => _icon = key),
-                    borderRadius: BorderRadius.circular(24),
-                    child: CircleAvatar(
-                      radius: 24,
-                      backgroundColor: selected ? color.withValues(alpha: 0.2) : null,
-                      child: Icon(
-                        IconMapper.iconFor(key),
-                        color: selected ? color : null,
-                      ),
+                children: [
+                  for (final key in IconMapper.keys)
+                    _IconChoice(
+                      icon: IconMapper.iconFor(key),
+                      label: key.replaceAll('_', ' '),
+                      selected: key == _icon,
+                      onTap: isLoading ? null : () => setState(() => _icon = key),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: isLoading ? null : _submit,
-                child: isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save'),
+                ],
               ),
             ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+        child: FilledButton(
+          onPressed: isLoading ? null : _submit,
+          child: isLoading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(isEditing ? 'Save changes' : 'Save category'),
+        ),
+      ),
+    );
+  }
+}
+
+class _IconChoice extends StatelessWidget {
+  const _IconChoice({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: selected ? AppColors.hero : AppColors.surface,
+        shape: CircleBorder(side: BorderSide(color: selected ? AppColors.brass : AppColors.hairline)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Icon(icon, color: selected ? AppColors.brass : AppColors.textLabel),
           ),
         ),
       ),

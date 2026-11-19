@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text.dart';
 import '../../../../core/utils/app_page_route.dart';
+import '../../../../core/widgets/press_scale.dart';
+import '../../../../data/models/alert_type.dart';
 import '../../providers/alert_provider.dart';
 import '../alerts_list_screen.dart';
 
-/// Home-screen summary card for unread spending/income alerts. Silently
-/// renders nothing when there are no unread alerts — this is a nice-to-have
-/// summary, not critical path, so it must never make Home look broken.
+/// Home-screen notice for unread spending/income alerts. Silently renders
+/// nothing when there are no unread alerts — this is a nice-to-have summary,
+/// not critical path, so it must never make Home look broken.
 class AlertsCard extends ConsumerWidget {
   const AlertsCard({super.key});
 
@@ -18,52 +21,49 @@ class AlertsCard extends ConsumerWidget {
     if (unread.isEmpty) return const SizedBox.shrink();
 
     final latest = unread.first;
-    final colorScheme = Theme.of(context).colorScheme;
+    final goodNews = latest.type.isGoodNews;
+    final textTheme = Theme.of(context).textTheme;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () => pushSlide(context, const AlertsListScreen()),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(top: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(20),
+    return PressScale(
+      child: Material(
+        color: goodNews ? AppColors.hero : AppColors.noticeBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: goodNews ? AppColors.heroBorder : AppColors.noticeBorder),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.notifications_active_outlined, color: AppColors.error, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    latest.message,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => pushSlide(context, const AlertsListScreen()),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  goodNews ? 'GOOD NEWS' : 'NOTICE',
+                  style: AppText.eyebrow(
+                    context,
+                    color: goodNews ? AppColors.income : AppColors.expense,
                   ),
-                  if (unread.length > 1) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '+${unread.length - 1} more alert${unread.length > 2 ? 's' : ''}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  latest.message,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500, height: 1.35),
+                ),
+                if (unread.length > 1) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '+${unread.length - 1} more alert${unread.length > 2 ? 's' : ''}',
+                    style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                  ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

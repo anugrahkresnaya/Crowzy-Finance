@@ -11,4 +11,15 @@ enum AlertType {
   // today (see claude.md's Data Model vs. Trigger Conditions discrepancy).
   @JsonValue('income_drop')
   incomeDrop,
+  @JsonValue('budget_limit')
+  budgetLimit,
+  @JsonValue('income_received')
+  incomeReceived,
+  @JsonValue('goal_on_track')
+  goalOnTrack,
+}
+
+extension AlertTypeX on AlertType {
+  /// Alerts that report something going well rather than something to watch.
+  bool get isGoodNews => this == AlertType.incomeReceived || this == AlertType.goalOnTrack;
 }

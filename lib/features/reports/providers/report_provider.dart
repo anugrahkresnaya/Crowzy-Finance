@@ -6,6 +6,7 @@ import '../../../data/models/transaction_type.dart';
 import '../../categories/providers/category_provider.dart';
 import '../../transactions/providers/transaction_provider.dart';
 import '../repository/report_repository.dart';
+import '../utils/report_stats.dart';
 
 part 'report_provider.g.dart';
 
@@ -62,7 +63,7 @@ List<CategoryBreakdownEntry> expenseBreakdown(Ref ref) {
 }
 
 @riverpod
-Map<DateTime, DayActivity> reportCalendarMarkers(Ref ref) {
-  final transactions = ref.watch(monthTransactionsProvider);
-  return ref.watch(reportRepositoryProvider).calendarMarkers(transactions);
+List<double> dailySpending(Ref ref) {
+  final month = ref.watch(selectedReportMonthProvider);
+  return dailyExpenses(ref.watch(monthTransactionsProvider), month);
 }

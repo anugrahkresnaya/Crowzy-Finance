@@ -122,7 +122,7 @@ final class AlertListProvider
   AlertList create() => AlertList();
 }
 
-String _$alertListHash() => r'a4f83a4a827becb240a990b82f6e77d28d5f89c5';
+String _$alertListHash() => r'65a0f86cfa3a8f752b2f0b4c43e163da71faccf3';
 
 abstract class _$AlertList extends $AsyncNotifier<List<AlertModel>> {
   FutureOr<List<AlertModel>> build();

@@ -1,24 +1,59 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../../core/utils/amount_input.dart';
+import '../../../../core/widgets/app_text_field.dart';
 import '../../../../data/models/wishlist_model.dart';
 
+/// Asks how much to add to [goal]. Returns the amount, or null if cancelled.
 Future<double?> showAddContributionDialog(BuildContext context, WishlistModel goal) {
-  final controller = TextEditingController();
-  final formKey = GlobalKey<FormState>();
-
   return showDialog<double>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text('Add to "${goal.name}"'),
+    builder: (context) => _ContributionDialog(goal: goal),
+  );
+}
+
+class _ContributionDialog extends StatefulWidget {
+  const _ContributionDialog({required this.goal});
+
+  final WishlistModel goal;
+
+  @override
+  State<_ContributionDialog> createState() => _ContributionDialogState();
+}
+
+class _ContributionDialogState extends State<_ContributionDialog> {
+  final _controller = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.of(context).pop(ThousandsInputFormatter.parse(_controller.text));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Add to "${widget.goal.name}"'),
       content: Form(
-        key: formKey,
-        child: TextFormField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: 'Amount to add'),
+        key: _formKey,
+        child: AppTextField(
+          controller: _controller,
+          label: 'Amount to add',
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            const ThousandsInputFormatter(),
+          ],
           validator: (value) {
-            final parsed = double.tryParse(value?.trim() ?? '');
+            final parsed = ThousandsInputFormatter.parse(value ?? '');
             if (parsed == null || parsed <= 0) return 'Enter a valid amount';
             return null;
           },
@@ -30,13 +65,11 @@ Future<double?> showAddContributionDialog(BuildContext context, WishlistModel go
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: () {
-            if (!formKey.currentState!.validate()) return;
-            Navigator.of(context).pop(double.parse(controller.text.trim()));
-          },
+          style: FilledButton.styleFrom(minimumSize: const Size(96, 44)),
+          onPressed: _submit,
           child: const Text('Add'),
         ),
       ],
-    ),
-  );
+    );
+  }
 }

@@ -3,11 +3,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/hive_constants.dart';
-import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/transaction_type.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../repository/transaction_repository.dart';
+import '../utils/month_summary.dart';
 
 part 'transaction_provider.g.dart';
 
@@ -106,12 +106,9 @@ double allTimeBalance(Ref ref) {
 }
 
 @riverpod
-double thisMonthBalance(Ref ref) {
+MonthSummary thisMonthSummary(Ref ref) {
   final transactions = ref.watch(transactionListProvider).value ?? const [];
-  final now = DateTime.now();
-  final monthTransactions =
-      transactions.where((t) => DateFormatter.isSameMonth(t.date, now));
-  return _netOf(monthTransactions);
+  return summarizeMonth(transactions, DateTime.now());
 }
 
 double _netOf(Iterable<TransactionModel> transactions) {

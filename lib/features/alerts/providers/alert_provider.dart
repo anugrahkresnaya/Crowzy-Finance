@@ -23,11 +23,20 @@ class AlertList extends _$AlertList {
     return ref.watch(alertRepositoryProvider).getAll();
   }
 
+  // The list stays on screen while these run, so there is no loading state:
+  // setting one would swap the whole list for a spinner on every tap.
   Future<void> markRead(String id) async {
-    state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(alertRepositoryProvider);
       await repository.markRead(id);
+      return repository.getAll();
+    });
+  }
+
+  Future<void> markAllRead() async {
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(alertRepositoryProvider);
+      await repository.markAllRead();
       return repository.getAll();
     });
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -12,11 +13,13 @@ import 'features/auth/ui/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   await Hive.initFlutter();
   await Hive.openBox<Map>(HiveConstants.categoriesBox);
   await Hive.openBox<Map>(HiveConstants.transactionsBox);
   await Hive.openBox<Map>(HiveConstants.wishlistBox);
+  await Hive.openBox<Map>(HiveConstants.budgetsBox);
   await Hive.openBox<Map>(HiveConstants.alertsBox);
   await Hive.openBox(HiveConstants.syncMetaBox);
 
@@ -49,9 +52,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Crowzy Finance',
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      theme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
       home: const AuthGate(),
     );
   }

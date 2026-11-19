@@ -1,25 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../core/theme/app_text.dart';
 import '../../../core/utils/app_page_route.dart';
+import '../../../core/widgets/balance_card.dart';
 import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/gradient_balance_card.dart';
-import '../../ai_analyzer/ui/ai_analyzer_screen.dart';
-import '../../ai_analyzer/ui/widgets/passive_insight_card.dart';
+import '../../../core/widgets/entrance.dart';
 import '../../alerts/providers/alert_provider.dart';
 import '../../alerts/ui/alerts_list_screen.dart';
-import '../../alerts/ui/widgets/alert_tile.dart';
 import '../../alerts/ui/widgets/alerts_card.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
+import '../../categories/ui/category_list_screen.dart';
 import '../../transactions/providers/transaction_provider.dart';
-import '../../transactions/ui/add_edit_transaction_screen.dart';
+import '../../transactions/ui/transaction_detail_screen.dart';
 import '../../transactions/ui/transaction_list_screen.dart';
 import '../../transactions/ui/widgets/transaction_tile.dart';
 import '../../wishlist/providers/wishlist_provider.dart';
+import '../../wishlist/ui/widgets/goal_highlight_tile.dart';
 import '../../wishlist/ui/wishlist_list_screen.dart';
-import '../../wishlist/ui/widgets/wishlist_tile.dart';
+import '../utils/greeting.dart';
+import 'widgets/home_header.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -28,61 +31,66 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final allTimeBalance = ref.watch(allTimeBalanceProvider);
-    final thisMonthBalance = ref.watch(thisMonthBalanceProvider);
-    final recentTransactions = ref.watch(recentTransactionsProvider);
+    final month = ref.watch(thisMonthSummaryProvider);
+    final recentTransactions = ref.watch(recentTransactionsProvider).take(3).toList();
     final activeGoals = ref.watch(activeWishlistGoalsProvider);
     final unreadAlerts = ref.watch(unreadAlertsProvider);
     final categories = ref.watch(categoryListProvider).value ?? const [];
     final categoryById = {for (final c in categories) c.id: c};
 
+    final goal = activeGoals.isEmpty ? null : activeGoals.first;
+    final hasNotice = unreadAlerts.isNotEmpty;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Crowzy Finance'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.auto_awesome_outlined),
-            tooltip: 'Add with AI',
-            onPressed: () => pushSlide(context, const AiAnalyzerScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Log out',
-            onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => pushSlide(context, const AddEditTransactionScreen()),
-        child: const Icon(Icons.add),
-      ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           children: [
-            Text(
-              'Welcome back, ${user?.email?.split('@').first ?? 'there'}',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+            HomeHeader(
+              name: friendlyName(user?.email),
+              unreadAlerts: unreadAlerts.length,
+              onOpenAlerts: () => pushSlide(context, const AlertsListScreen()),
+              onSignOut: () => ref.read(authControllerProvider.notifier).signOut(),
+            ).entrance(context, duration: AppMotion.slow),
+            const SizedBox(height: 22),
+            BalanceCard(
+              balance: allTimeBalance,
+              monthIncome: month.income,
+              monthExpense: month.expense,
+              changePercent: month.changePercent,
+            ).entrance(
+              context,
+              delay: const Duration(milliseconds: 80),
+              duration: AppMotion.slow,
             ),
-            const SizedBox(height: 16),
-            GradientBalanceCard(
-              allTimeBalance: allTimeBalance,
-              thisMonthBalance: thisMonthBalance,
-            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
-            const PassiveInsightCard()
-                .animate()
-                .fadeIn(delay: 150.ms, duration: 400.ms)
-                .slideY(begin: 0.05, end: 0),
-            const AlertsCard()
-                .animate()
-                .fadeIn(delay: 200.ms, duration: 400.ms)
-                .slideY(begin: 0.05, end: 0),
-            const SizedBox(height: 28),
+            if (goal != null || hasNotice) ...[
+              const SizedBox(height: 12),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (goal != null)
+                      Expanded(
+                        child: GoalHighlightTile(
+                          goal: goal,
+                          onTap: () => pushSlide(context, const WishlistListScreen()),
+                        ),
+                      ),
+                    if (goal != null && hasNotice) const SizedBox(width: 10),
+                    if (hasNotice) const Expanded(child: AlertsCard()),
+                  ],
+                ),
+              ).entrance(
+                context,
+                delay: const Duration(milliseconds: 160),
+                duration: AppMotion.slow,
+              ),
+            ],
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Recent Transactions', style: Theme.of(context).textTheme.titleMedium),
+                Text('Recent', style: Theme.of(context).textTheme.titleMedium),
                 TextButton(
                   onPressed: () => pushSlide(context, const TransactionListScreen()),
                   child: const Text('See all'),
@@ -99,79 +107,74 @@ class HomeScreen extends ConsumerWidget {
                 (entry) {
                   final (index, transaction) = entry;
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    key: ValueKey(transaction.id),
+                    padding: EdgeInsets.zero,
                     child: TransactionTile(
                       transaction: transaction,
                       category: categoryById[transaction.categoryId],
-                    )
-                        .animate()
-                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
-                        .slideX(begin: 0.04, end: 0),
+                      onTap: () => pushSlide(
+                        context,
+                        TransactionDetailScreen(transactionId: transaction.id),
+                      ),
+                    ).entrance(context, index: index, axis: Axis.horizontal),
                   );
                 },
               ),
             const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Goals', style: Theme.of(context).textTheme.titleMedium),
-                TextButton(
-                  onPressed: () => pushSlide(context, const WishlistListScreen()),
-                  child: const Text('See all'),
-                ),
-              ],
+            Text('MANAGE', style: AppText.eyebrow(context)),
+            const SizedBox(height: 4),
+            _ManageRow(
+              icon: Icons.category_outlined,
+              label: 'Categories',
+              onTap: () => pushSlide(context, const CategoryListScreen()),
             ),
-            if (activeGoals.isEmpty)
-              const EmptyState(
-                icon: Icons.savings_outlined,
-                message: 'No goals yet — tap "See all" to add one',
-              )
-            else
-              ...activeGoals.take(3).indexed.map(
-                (entry) {
-                  final (index, goal) = entry;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: WishlistTile(goal: goal)
-                        .animate()
-                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
-                        .slideX(begin: 0.04, end: 0),
-                  );
-                },
-              ),
-            const SizedBox(height: 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Alerts', style: Theme.of(context).textTheme.titleMedium),
-                TextButton(
-                  onPressed: () => pushSlide(context, const AlertsListScreen()),
-                  child: const Text('See all'),
-                ),
-              ],
+            _ManageRow(
+              icon: Icons.savings_outlined,
+              label: 'Wishlist goals',
+              onTap: () => pushSlide(context, const WishlistListScreen()),
             ),
-            if (unreadAlerts.isEmpty)
-              const EmptyState(
-                icon: Icons.notifications_none_outlined,
-                message: 'No alerts — you\'re all caught up',
-              )
-            else
-              ...unreadAlerts.take(3).indexed.map(
-                (entry) {
-                  final (index, alert) = entry;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: AlertTile(
-                      alert: alert,
-                      onTap: () => ref.read(alertListProvider.notifier).markRead(alert.id),
-                    )
-                        .animate()
-                        .fadeIn(delay: (60 * index).ms, duration: 300.ms)
-                        .slideX(begin: 0.04, end: 0),
-                  );
-                },
-              ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ManageRow extends StatelessWidget {
+  const _ManageRow({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.divider)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: AppColors.brass),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.textFaint),
+            ],
+          ),
         ),
       ),
     );

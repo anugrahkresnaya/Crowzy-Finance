@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:crowzy_finance/core/sync/sync_service.dart';
 import 'package:crowzy_finance/data/models/alert_model.dart';
 import 'package:crowzy_finance/data/models/alert_type.dart';
+import 'package:crowzy_finance/data/models/budget_model.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
@@ -29,6 +30,7 @@ void main() {
   late Box<Map> categories;
   late Box<Map> transactions;
   late Box<Map> wishlist;
+  late Box<Map> budgets;
   late Box<Map> alerts;
   late Box syncMeta;
   late SyncService service;
@@ -81,15 +83,16 @@ void main() {
     categories = await Hive.openBox<Map>('t_categories');
     transactions = await Hive.openBox<Map>('t_transactions');
     wishlist = await Hive.openBox<Map>('t_wishlist');
+    budgets = await Hive.openBox<Map>('t_budgets');
     alerts = await Hive.openBox<Map>('t_alerts');
     syncMeta = await Hive.openBox('t_sync_meta');
 
-    service = SyncService(supabase, categories, transactions, wishlist, alerts, syncMeta);
+    service = SyncService(supabase, categories, transactions, wishlist, budgets, alerts, syncMeta);
   });
 
   tearDown(() async {
     await supabase.dispose();
-    for (final box in [categories, transactions, wishlist, alerts, syncMeta]) {
+    for (final box in [categories, transactions, wishlist, budgets, alerts, syncMeta]) {
       await box.deleteFromDisk();
     }
   });
@@ -119,6 +122,25 @@ void main() {
         type: TransactionType.expense,
         categoryId: 'c1',
         date: DateTime.utc(2026, 7, 5),
+        createdAt: DateTime.utc(2026, 7, 1),
+        updatedAt: updatedAt ?? DateTime.utc(2026, 7, 1),
+        isSynced: isSynced,
+      );
+
+  BudgetModel budget(
+    String id, {
+    String categoryId = 'c1',
+    double limit = 1000000,
+    bool isSynced = true,
+    bool isDeleted = false,
+    DateTime? updatedAt,
+  }) =>
+      BudgetModel(
+        id: id,
+        userId: userId,
+        categoryId: categoryId,
+        monthlyLimit: limit,
+        isDeleted: isDeleted,
         createdAt: DateTime.utc(2026, 7, 1),
         updatedAt: updatedAt ?? DateTime.utc(2026, 7, 1),
         isSynced: isSynced,
@@ -311,6 +333,97 @@ void main() {
 
       final stored = AlertModel.fromJson(Map<String, dynamic>.from(alerts.get('a1')!));
       expect(stored.readAt, DateTime.utc(2026, 7, 12));
+    });
+  });
+
+  group('budgets', () {
+    test('an unsynced limit is pushed without the local flag and marked synced', () async {
+      await budgets.put('b1', budget('b1', isSynced: false).toJson());
+      await budgets.put('b2', budget('b2', categoryId: 'c2').toJson());
+
+      await service.sync(userId);
+
+      final sent = posts('budgets');
+      expect(sent, hasLength(1));
+      final rows = jsonDecode(sent.single.body) as List;
+      expect(rows.map((r) => r['id']), ['b1']);
+      expect(rows.single.containsKey('is_synced'), isFalse);
+      expect(rows.single['monthly_limit'], 1000000);
+      expect(rows.single['category_id'], 'c1');
+
+      final stored = BudgetModel.fromJson(Map<String, dynamic>.from(budgets.get('b1')!));
+      expect(stored.isSynced, isTrue);
+    });
+
+    test('categories are pushed before budgets so the category exists server-side', () async {
+      await categories.put('c1', category('c1', isSynced: false).toJson());
+      await budgets.put('b1', budget('b1', isSynced: false).toJson());
+
+      await service.sync(userId);
+
+      final order = requests
+          .where((r) => r.method == 'POST')
+          .map((r) => r.url.pathSegments.last)
+          .toList();
+      expect(order, ['categories', 'budgets']);
+    });
+
+    test('a cleared limit is pushed as a soft delete', () async {
+      await budgets.put('b1', budget('b1', isDeleted: true, isSynced: false).toJson());
+
+      await service.sync(userId);
+
+      final rows = jsonDecode(posts('budgets').single.body) as List;
+      expect(rows.single['is_deleted'], isTrue);
+    });
+
+    test('remote limits are stored as synced, reading numeric strings too', () async {
+      remote['budgets'] = [
+        {...budget('b1', updatedAt: DateTime.utc(2026, 7, 3)).toSupabaseRow(), 'monthly_limit': '2500000.00'},
+      ];
+
+      await service.sync(userId);
+
+      final stored = BudgetModel.fromJson(Map<String, dynamic>.from(budgets.get('b1')!));
+      expect(stored.monthlyLimit, 2500000);
+      expect(stored.isSynced, isTrue);
+      expect(
+        DateTime.parse(syncMeta.get('last_synced_budgets_$userId') as String),
+        DateTime.utc(2026, 7, 3),
+      );
+    });
+
+    test('a newer remote limit replaces a synced local one', () async {
+      await budgets.put('b1', budget('b1', limit: 100).toJson());
+      remote['budgets'] = [
+        budget('b1', limit: 900, updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
+      ];
+
+      await service.sync(userId);
+
+      final stored = BudgetModel.fromJson(Map<String, dynamic>.from(budgets.get('b1')!));
+      expect(stored.monthlyLimit, 900);
+    });
+
+    test('an unsynced local limit is not overwritten by the pull', () async {
+      await budgets.put('b1', budget('b1', limit: 500, isSynced: false).toJson());
+      remote['budgets'] = [
+        budget('b1', limit: 900, updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
+      ];
+      failPostWithStatus = 500;
+
+      await expectLater(service.sync(userId), throwsA(isA<SyncException>()));
+
+      final stored = BudgetModel.fromJson(Map<String, dynamic>.from(budgets.get('b1')!));
+      expect(stored.monthlyLimit, 500);
+      expect(stored.isSynced, isFalse);
+    });
+
+    test('only the user\'s own budgets are requested', () async {
+      await service.sync(userId);
+
+      final get = requests.firstWhere((r) => r.url.pathSegments.last == 'budgets' && r.method == 'GET');
+      expect(get.url.queryParameters['user_id'], 'eq.$userId');
     });
   });
 }

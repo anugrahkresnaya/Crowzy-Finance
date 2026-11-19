@@ -7,11 +7,85 @@ class DateFormatter {
   static final _dayShort = DateFormat('d MMM');
   static final _monthYear = DateFormat('MMMM yyyy');
   static final _weekday = DateFormat('EEEE');
+  static final _monthName = DateFormat('MMMM');
+  static final _monthYearShort = DateFormat('MMM yyyy');
+  static final _receiptDate = DateFormat('EEE d MMM yyyy');
+  static final _receiptDateLong = DateFormat('EEE d MMMM yyyy');
+  static final _time = DateFormat('HH:mm');
 
   static String day(DateTime date) => _day.format(date);
   static String dayShort(DateTime date) => _dayShort.format(date);
   static String monthYear(DateTime date) => _monthYear.format(date);
+  static String monthName(DateTime date) => _monthName.format(date);
+  static String monthYearShort(DateTime date) => _monthYearShort.format(date);
+
+  /// "Sat 3 Oct 2026"
+  static String receiptDate(DateTime date) => _receiptDate.format(date);
+
+  /// "Sat 3 October 2026"
+  static String receiptDateLong(DateTime date) => _receiptDateLong.format(date);
+
+  /// "09:12"
+  static String time(DateTime date) => _time.format(date);
   static String weekday(DateTime date) => _weekday.format(date);
+
+  static final _dayLong = DateFormat('d MMMM');
+
+  /// "1 October"
+  static String dayLong(DateTime date) => _dayLong.format(date);
+
+  /// "Today", "Yesterday", or a short date ("1 Oct", with the year when it is
+  /// not the current one).
+  static String relativeDay(DateTime date, {DateTime? now}) {
+    final today = now ?? DateTime.now();
+    final days = _calendarDays(today) - _calendarDays(date);
+    if (days == 0) return 'Today';
+    if (days == 1) return 'Yesterday';
+    return date.year == today.year ? dayShort(date) : day(date);
+  }
+
+  /// "Today", "Yesterday", or a long date ("1 October", with the year when it
+  /// is not the current one).
+  static String relativeDayLong(DateTime date, {DateTime? now}) {
+    final today = now ?? DateTime.now();
+    final days = _calendarDays(today) - _calendarDays(date);
+    if (days == 0) return 'Today';
+    if (days == 1) return 'Yesterday';
+    return date.year == today.year ? dayLong(date) : '${dayLong(date)} ${date.year}';
+  }
+
+  /// "Today, 3 October", "Yesterday, 2 October", otherwise "1 October 2026".
+  static String relativeDayWithDate(DateTime date, {DateTime? now}) {
+    final today = now ?? DateTime.now();
+    final days = _calendarDays(today) - _calendarDays(date);
+    if (days == 0) return 'Today, ${dayLong(date)}';
+    if (days == 1) return 'Yesterday, ${dayLong(date)}';
+    return '${dayLong(date)} ${date.year}';
+  }
+
+  /// "Just now", "5 minutes ago", "2 hours ago", "Yesterday", then "1 October".
+  static String ago(DateTime date, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final elapsed = current.difference(date);
+    if (elapsed.inMinutes < 1) return 'Just now';
+    if (elapsed.inMinutes < 60) {
+      final minutes = elapsed.inMinutes;
+      return '$minutes ${minutes == 1 ? 'minute' : 'minutes'} ago';
+    }
+    final days = _calendarDays(current) - _calendarDays(date);
+    if (days == 0) {
+      final hours = elapsed.inHours;
+      return '$hours ${hours == 1 ? 'hour' : 'hours'} ago';
+    }
+    if (days == 1) return 'Yesterday';
+    return date.year == current.year ? dayLong(date) : day(date);
+  }
+
+  // Whole days since the epoch for the calendar date, computed in UTC so a
+  // daylight-saving change cannot make two adjacent days look zero days apart.
+  static int _calendarDays(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
 
   static bool isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

@@ -22,6 +22,15 @@ The Supabase URL and publishable key are in
 `lib/core/constants/supabase_constants.dart`. To point at your own project,
 change them there.
 
+### Look and feel
+
+The app is dark-only (bottle-green, ivory and brass). Titles and amounts use
+Cormorant Garamond, body text Hanken Grotesk, and receipt screens Courier
+Prime. The fonts are bundled in `assets/google_fonts/` and runtime fetching is
+turned off, so the app renders the same offline. Colours, type and motion
+tokens live in `lib/core/theme/` (`AppColors`, `AppText`, `AppMotion`); motion
+respects the system's reduced-motion setting.
+
 ### Code generation
 
 Models (freezed/json_serializable) and providers (riverpod_generator) use
@@ -52,6 +61,13 @@ Migrations live in `supabase/migrations/`:
    (`supabase db diff`) before applying it there.
 2. `20260724000000_alerts.sql` — `alerts` table, the `evaluate_alerts()`
    rule function, and a daily pg_cron job.
+3. `20261003000000_budgets.sql` — the optional per-category `budgets` table
+   (with RLS).
+4. `20261003000100_budget_and_positive_alerts.sql` — adds the `budget_limit`,
+   `income_received` and `goal_on_track` alert rules to `evaluate_alerts()`.
+
+**Deploy order:** ship the app update before running migrations 3 and 4. An
+older app build cannot parse the new alert types.
 
 ```bash
 supabase link --project-ref <ref>

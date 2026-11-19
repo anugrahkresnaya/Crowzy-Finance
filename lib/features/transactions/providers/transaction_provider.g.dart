@@ -362,43 +362,43 @@ final class AllTimeBalanceProvider
 
 String _$allTimeBalanceHash() => r'30e3b8595fc9396e503468ec211355cec5c4793a';
 
-@ProviderFor(thisMonthBalance)
-final thisMonthBalanceProvider = ThisMonthBalanceProvider._();
+@ProviderFor(thisMonthSummary)
+final thisMonthSummaryProvider = ThisMonthSummaryProvider._();
 
-final class ThisMonthBalanceProvider
-    extends $FunctionalProvider<double, double, double>
-    with $Provider<double> {
-  ThisMonthBalanceProvider._()
+final class ThisMonthSummaryProvider
+    extends $FunctionalProvider<MonthSummary, MonthSummary, MonthSummary>
+    with $Provider<MonthSummary> {
+  ThisMonthSummaryProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'thisMonthBalanceProvider',
+        name: r'thisMonthSummaryProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$thisMonthBalanceHash();
+  String debugGetCreateSourceHash() => _$thisMonthSummaryHash();
 
   @$internal
   @override
-  $ProviderElement<double> $createElement($ProviderPointer pointer) =>
+  $ProviderElement<MonthSummary> $createElement($ProviderPointer pointer) =>
       $ProviderElement(pointer);
 
   @override
-  double create(Ref ref) {
-    return thisMonthBalance(ref);
+  MonthSummary create(Ref ref) {
+    return thisMonthSummary(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(double value) {
+  Override overrideWithValue(MonthSummary value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<double>(value),
+      providerOverride: $SyncValueProvider<MonthSummary>(value),
     );
   }
 }
 
-String _$thisMonthBalanceHash() => r'e2ff422b2d3b20ffc736d6254082f3bf53de1ff3';
+String _$thisMonthSummaryHash() => r'a54a3f1030a29c605b9f13be9a2a3ac698dc6529';

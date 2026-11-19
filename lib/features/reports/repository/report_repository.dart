@@ -17,18 +17,15 @@ class CategoryBreakdownEntry {
     required this.category,
     required this.total,
     required this.percentage,
+    this.count = 0,
   });
 
   final CategoryModel? category;
   final double total;
   final double percentage;
-}
 
-class DayActivity {
-  const DayActivity({this.hasIncome = false, this.hasExpense = false});
-
-  final bool hasIncome;
-  final bool hasExpense;
+  /// How many transactions make up [total].
+  final int count;
 }
 
 class WeeklyBucket {
@@ -88,8 +85,10 @@ class ReportRepository {
   ) {
     final categoryById = {for (final c in categories) c.id: c};
     final totals = <String, double>{};
+    final counts = <String, int>{};
     for (final t in transactions.where((t) => t.type == type)) {
       totals[t.categoryId] = (totals[t.categoryId] ?? 0) + t.amount;
+      counts[t.categoryId] = (counts[t.categoryId] ?? 0) + 1;
     }
     final grandTotal = totals.values.fold(0.0, (a, b) => a + b);
 
@@ -99,24 +98,12 @@ class ReportRepository {
             category: categoryById[e.key],
             total: e.value,
             percentage: grandTotal == 0 ? 0 : (e.value / grandTotal) * 100,
+            count: counts[e.key] ?? 0,
           ),
         )
         .toList()
       ..sort((a, b) => b.total.compareTo(a.total));
     return entries;
-  }
-
-  Map<DateTime, DayActivity> calendarMarkers(List<TransactionModel> transactions) {
-    final markers = <DateTime, DayActivity>{};
-    for (final t in transactions) {
-      final day = DateTime(t.date.year, t.date.month, t.date.day);
-      final existing = markers[day] ?? const DayActivity();
-      markers[day] = DayActivity(
-        hasIncome: existing.hasIncome || t.type == TransactionType.income,
-        hasExpense: existing.hasExpense || t.type == TransactionType.expense,
-      );
-    }
-    return markers;
   }
 
   double percentChange(double previous, double current) {

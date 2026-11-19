@@ -23,10 +23,28 @@ class AlertRepository {
   Future<void> markRead(String id) async {
     final now = DateTime.now();
     await _client.from('alerts').update({'read_at': now.toIso8601String()}).eq('id', id);
+    await applyReadLocally([id], now);
+  }
 
-    final raw = _box.get(id);
-    if (raw == null) return;
-    final alert = AlertModel.fromJson(Map<String, dynamic>.from(raw));
-    await _box.put(id, alert.copyWith(readAt: now).toJson());
+  /// Marks every unread alert as read with a single request. Does nothing when
+  /// there are none.
+  Future<void> markAllRead() async {
+    final ids = getAll().where((a) => a.isUnread).map((a) => a.id).toList();
+    if (ids.isEmpty) return;
+
+    final now = DateTime.now();
+    await _client.from('alerts').update({'read_at': now.toIso8601String()}).inFilter('id', ids);
+    await applyReadLocally(ids, now);
+  }
+
+  /// Mirrors a read-at time into the local cache for [ids], skipping any that
+  /// are not cached.
+  Future<void> applyReadLocally(Iterable<String> ids, DateTime readAt) async {
+    for (final id in ids) {
+      final raw = _box.get(id);
+      if (raw == null) continue;
+      final alert = AlertModel.fromJson(Map<String, dynamic>.from(raw));
+      await _box.put(id, alert.copyWith(readAt: readAt).toJson());
+    }
   }
 }
