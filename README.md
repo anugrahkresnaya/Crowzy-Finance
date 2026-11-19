@@ -61,18 +61,36 @@ Migrations live in `supabase/migrations/`:
    (`supabase db diff`) before applying it there.
 2. `20260724000000_alerts.sql` — `alerts` table, the `evaluate_alerts()`
    rule function, and a daily pg_cron job.
-3. `20261003000000_budgets.sql` — the optional per-category `budgets` table
-   (with RLS).
-4. `20261003000100_budget_and_positive_alerts.sql` — adds the `budget_limit`,
-   `income_received` and `goal_on_track` alert rules to `evaluate_alerts()`.
+3. `20261005000000_accounts_archive.sql` — adds `is_archived` to `accounts`
+   (additive, safe to run twice).
 
-**Deploy order:** ship the app update before running migrations 3 and 4. An
-older app build cannot parse the new alert types.
+**These files are a partial record of the live project.** The project in use was
+built with more migrations than this repository holds: `accounts`,
+`transfer_group_id` on `transactions`, `budgets`, the *Transfer In* and
+*Transfer Out* categories, `format_rp()`, the `budget_exceeded` alert rule,
+recurring transactions and device tokens. The app is written against that live
+schema, so **do not run `supabase db push`** against it: the migration history
+there does not match this directory. Run the one new statement by hand instead,
+in the dashboard's SQL editor, once, before releasing the app version that
+archives accounts. Older builds are unaffected by it.
 
-```bash
-supabase link --project-ref <ref>
-supabase db push
-```
+For a brand-new project, `supabase db pull` from the live one gives a complete
+set of migrations.
+
+### How accounts and transfers are stored
+
+Accounts are `bank`, `e_wallet` or `cash`, with an `initial_balance`, an optional
+`is_main` flag (the default source for new transactions and transfers) and, since
+the migration above, `is_archived`. A transaction with no `account_id` is
+*unassigned*; it still counts in the total.
+
+A transfer has no table of its own. It is two ordinary transactions that share a
+`transfer_group_id` and the same date and note: an expense in the *Transfer Out*
+category on the source account and an income in *Transfer In* on the destination.
+The app pairs them back into one transfer for display. Because the two legs are
+income and expense in the data, reports, budgets, alerts and the AI contexts all
+leave them out. A transfer's optional fee is a separate, ordinary expense in the
+user's *Admin Fee* category, so it counts as spending.
 
 ### Edge Functions
 

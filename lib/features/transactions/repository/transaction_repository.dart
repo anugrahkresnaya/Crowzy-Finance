@@ -15,8 +15,21 @@ class TransactionRepository {
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
+  /// The row with [id] even when it is soft-deleted, or null if there is none.
+  TransactionModel? findIncludingDeleted(String id) {
+    final raw = _box.get(id);
+    if (raw == null) return null;
+    return TransactionModel.fromJson(Map<String, dynamic>.from(raw));
+  }
+
   Future<void> save(TransactionModel transaction) async {
     await _box.put(transaction.id, transaction.toJson());
+  }
+
+  /// Removes a row outright. Only for undoing a write that has not synced yet;
+  /// anything that may have reached the server is soft-deleted instead.
+  Future<void> remove(String id) async {
+    await _box.delete(id);
   }
 
   bool isCategoryInUse(String categoryId) {

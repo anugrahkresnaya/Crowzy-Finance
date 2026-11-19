@@ -9,6 +9,7 @@ import '../../../data/models/ai_transaction_suggestion.dart';
 import '../../../data/models/category_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../categories/providers/category_provider.dart';
+import '../../accounts/providers/account_provider.dart';
 import '../../transactions/providers/transaction_provider.dart';
 import '../../transactions/ui/add_edit_transaction_screen.dart';
 import '../providers/ai_analyzer_provider.dart';
@@ -148,6 +149,7 @@ class _AddTabState extends ConsumerState<_AddTab> {
           categoryId: categoryId,
           date: result.date,
           note: result.note,
+          accountId: ref.read(startingAccountIdProvider),
         );
 
     if (!mounted) return;

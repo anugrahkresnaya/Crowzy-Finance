@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crowzy_finance/core/sync/sync_service.dart';
+import 'package:crowzy_finance/data/models/account_model.dart';
+import 'package:crowzy_finance/data/models/account_type.dart';
 import 'package:crowzy_finance/data/models/alert_model.dart';
 import 'package:crowzy_finance/data/models/alert_type.dart';
 import 'package:crowzy_finance/data/models/budget_model.dart';
@@ -31,6 +33,7 @@ void main() {
   late Box<Map> transactions;
   late Box<Map> wishlist;
   late Box<Map> budgets;
+  late Box<Map> accounts;
   late Box<Map> alerts;
   late Box syncMeta;
   late SyncService service;
@@ -84,15 +87,25 @@ void main() {
     transactions = await Hive.openBox<Map>('t_transactions');
     wishlist = await Hive.openBox<Map>('t_wishlist');
     budgets = await Hive.openBox<Map>('t_budgets');
+    accounts = await Hive.openBox<Map>('t_accounts');
     alerts = await Hive.openBox<Map>('t_alerts');
     syncMeta = await Hive.openBox('t_sync_meta');
 
-    service = SyncService(supabase, categories, transactions, wishlist, budgets, alerts, syncMeta);
+    service = SyncService(
+      supabase,
+      categories,
+      transactions,
+      wishlist,
+      budgets,
+      accounts,
+      alerts,
+      syncMeta,
+    );
   });
 
   tearDown(() async {
     await supabase.dispose();
-    for (final box in [categories, transactions, wishlist, budgets, alerts, syncMeta]) {
+    for (final box in [categories, transactions, wishlist, budgets, accounts, alerts, syncMeta]) {
       await box.deleteFromDisk();
     }
   });
@@ -140,6 +153,26 @@ void main() {
         userId: userId,
         categoryId: categoryId,
         monthlyLimit: limit,
+        isDeleted: isDeleted,
+        createdAt: DateTime.utc(2026, 7, 1),
+        updatedAt: updatedAt ?? DateTime.utc(2026, 7, 1),
+        isSynced: isSynced,
+      );
+
+  AccountModel account(
+    String id, {
+    String name = 'BCA',
+    double opening = 0,
+    bool isSynced = true,
+    bool isDeleted = false,
+    DateTime? updatedAt,
+  }) =>
+      AccountModel(
+        id: id,
+        userId: userId,
+        name: name,
+        type: AccountType.bank,
+        initialBalance: opening,
         isDeleted: isDeleted,
         createdAt: DateTime.utc(2026, 7, 1),
         updatedAt: updatedAt ?? DateTime.utc(2026, 7, 1),
@@ -333,6 +366,118 @@ void main() {
 
       final stored = AlertModel.fromJson(Map<String, dynamic>.from(alerts.get('a1')!));
       expect(stored.readAt, DateTime.utc(2026, 7, 12));
+    });
+  });
+
+  group('accounts', () {
+    test('an unsynced account is pushed without the local flag and marked synced', () async {
+      await accounts.put('a1', account('a1', isSynced: false, opening: 250000).toJson());
+      await accounts.put('a2', account('a2', name: 'DANA').toJson());
+
+      await service.sync(userId);
+
+      final rows = jsonDecode(posts('accounts').single.body) as List;
+      expect(rows.map((r) => r['id']), ['a1']);
+      expect(rows.single.containsKey('is_synced'), isFalse);
+      expect(rows.single['initial_balance'], 250000);
+      expect(rows.single['type'], 'bank');
+
+      final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a1')!));
+      expect(stored.isSynced, isTrue);
+    });
+
+    test('an e-wallet, a main account and an archived one keep their live column values', () async {
+      await accounts.put(
+        'a1',
+        account('a1', isSynced: false).copyWith(type: AccountType.ewallet, isMain: true, isArchived: true).toJson(),
+      );
+
+      await service.sync(userId);
+
+      final row = (jsonDecode(posts('accounts').single.body) as List).single as Map;
+      expect(row['type'], 'e_wallet');
+      expect(row['is_main'], isTrue);
+      expect(row['is_archived'], isTrue);
+    });
+
+    test('accounts are pushed before the transactions that point at them', () async {
+      await categories.put('c1', category('c1', isSynced: false).toJson());
+      await transactions.put('x1', transaction('x1', isSynced: false).toJson());
+      await accounts.put('a1', account('a1', isSynced: false).toJson());
+
+      await service.sync(userId);
+
+      final order = requests
+          .where((r) => r.method == 'POST')
+          .map((r) => r.url.pathSegments.last)
+          .toList();
+      expect(order, ['categories', 'accounts', 'transactions']);
+    });
+
+    test('a transaction with an account and a transfer group is pushed with both columns', () async {
+      await transactions.put(
+        'x1',
+        transaction('x1', isSynced: false).copyWith(accountId: 'a1', transferGroupId: 'g1').toJson(),
+      );
+
+      await service.sync(userId);
+
+      final row = (jsonDecode(posts('transactions').single.body) as List).single as Map;
+      expect(row['account_id'], 'a1');
+      expect(row['transfer_group_id'], 'g1');
+    });
+
+    test('remote accounts from the live schema are read, including e_wallet and the main flag', () async {
+      remote['accounts'] = [
+        {
+          'id': 'a9',
+          'user_id': userId,
+          'name': 'DANA',
+          'type': 'e_wallet',
+          'initial_balance': '1850000.0',
+          'is_deleted': false,
+          'is_main': true,
+          'created_at': '2026-08-05T00:00:00.000Z',
+          'updated_at': '2026-08-10T00:00:00.000Z',
+        },
+      ];
+
+      await service.sync(userId);
+
+      final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a9')!));
+      expect(stored.type, AccountType.ewallet);
+      expect(stored.isMain, isTrue);
+      expect(stored.isArchived, isFalse); // the live table has no such column yet
+      expect(stored.initialBalance, 1850000);
+    });
+
+    test('remote accounts are stored as synced, reading numeric strings too', () async {
+      remote['accounts'] = [
+        {...account('a1', updatedAt: DateTime.utc(2026, 7, 3)).toSupabaseRow(), 'initial_balance': '1850000.00'},
+      ];
+
+      await service.sync(userId);
+
+      final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a1')!));
+      expect(stored.initialBalance, 1850000);
+      expect(stored.isSynced, isTrue);
+      expect(
+        DateTime.parse(syncMeta.get('last_synced_accounts_$userId') as String),
+        DateTime.utc(2026, 7, 3),
+      );
+    });
+
+    test('an unsynced local account is not overwritten by the pull', () async {
+      await accounts.put('a1', account('a1', name: 'Mine', isSynced: false).toJson());
+      remote['accounts'] = [
+        account('a1', name: 'Theirs', updatedAt: DateTime.utc(2026, 7, 9)).toSupabaseRow(),
+      ];
+      failPostWithStatus = 500;
+
+      await expectLater(service.sync(userId), throwsA(isA<SyncException>()));
+
+      final stored = AccountModel.fromJson(Map<String, dynamic>.from(accounts.get('a1')!));
+      expect(stored.name, 'Mine');
     });
   });
 

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../data/models/transaction_type.dart';
+import '../../features/accounts/ui/transfer_form_screen.dart';
 import '../../features/ai_analyzer/ui/ai_analyzer_screen.dart';
 import '../../features/home/ui/home_screen.dart';
 import '../../features/reports/ui/monthly_report_screen.dart';
 import '../../features/transactions/ui/add_edit_transaction_screen.dart';
 import '../../features/transactions/ui/transaction_list_screen.dart';
+import '../../features/transactions/ui/widgets/add_chooser_sheet.dart';
 import '../theme/app_motion.dart';
 import '../utils/app_page_route.dart';
 import 'pill_nav_bar.dart';
@@ -36,6 +39,17 @@ class _RootShellState extends State<RootShell> {
       _forward = index > _index;
       _index = index;
     });
+  }
+
+  Future<void> _add() async {
+    final choice = await showAddChooserSheet(context);
+    if (choice == null || !mounted) return;
+    final screen = switch (choice) {
+      AddChoice.expense => const AddEditTransactionScreen(),
+      AddChoice.income => const AddEditTransactionScreen(initialType: TransactionType.income),
+      AddChoice.transfer => const TransferFormScreen(),
+    };
+    pushSlide(context, screen);
   }
 
   Widget _transition(Widget child, Animation<double> animation) {
@@ -76,7 +90,7 @@ class _RootShellState extends State<RootShell> {
         child: PillNavBar(
           selectedIndex: _index,
           onSelected: _select,
-          onAdd: () => pushSlide(context, const AddEditTransactionScreen()),
+          onAdd: _add,
         ),
       ),
     );

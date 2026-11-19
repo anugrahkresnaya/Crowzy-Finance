@@ -33,8 +33,10 @@ class CategoryList extends _$CategoryList {
   Future<List<CategoryModel>> build() async {
     final repository = ref.watch(categoryRepositoryProvider);
     var categories = repository.getAll();
-    if (categories.isEmpty) {
-      for (final category in DefaultCategories.build()) {
+    // Judged against every stored row, so a default that was deleted stays deleted.
+    final missing = DefaultCategories.missingFrom(repository.allIds());
+    if (missing.isNotEmpty) {
+      for (final category in missing) {
         await repository.save(category);
       }
       categories = repository.getAll();
@@ -92,14 +94,20 @@ class CategoryList extends _$CategoryList {
   }
 }
 
+/// Categories a person can file a transaction under. Transfer In and Transfer
+/// Out are left out: only a transfer is recorded in them.
 @riverpod
 List<CategoryModel> incomeCategories(Ref ref) {
   final categories = ref.watch(categoryListProvider).value ?? const [];
-  return categories.where((c) => c.type == TransactionType.income).toList();
+  return categories
+      .where((c) => c.type == TransactionType.income && !DefaultCategories.isTransferCategory(c.id))
+      .toList();
 }
 
 @riverpod
 List<CategoryModel> expenseCategories(Ref ref) {
   final categories = ref.watch(categoryListProvider).value ?? const [];
-  return categories.where((c) => c.type == TransactionType.expense).toList();
+  return categories
+      .where((c) => c.type == TransactionType.expense && !DefaultCategories.isTransferCategory(c.id))
+      .toList();
 }

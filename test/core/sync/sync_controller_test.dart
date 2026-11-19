@@ -4,11 +4,13 @@ import 'package:crowzy_finance/core/notifications/notification_provider.dart';
 import 'package:crowzy_finance/core/notifications/notification_service.dart';
 import 'package:crowzy_finance/core/sync/sync_provider.dart';
 import 'package:crowzy_finance/core/sync/sync_service.dart';
+import 'package:crowzy_finance/data/models/account_model.dart';
 import 'package:crowzy_finance/data/models/alert_model.dart';
 import 'package:crowzy_finance/data/models/budget_model.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/wishlist_model.dart';
+import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
 import 'package:crowzy_finance/features/alerts/providers/alert_provider.dart';
 import 'package:crowzy_finance/features/auth/providers/auth_provider.dart';
 import 'package:crowzy_finance/features/budgets/providers/budget_provider.dart';
@@ -76,12 +78,20 @@ class _CountingBudgets extends BudgetList {
   }
 }
 
+class _CountingAccounts extends AccountList {
+  @override
+  Future<List<AccountModel>> build() async {
+    _builds['accounts'] = (_builds['accounts'] ?? 0) + 1;
+    return const [];
+  }
+}
+
 void main() {
-  test('syncNow refreshes every synced list, budgets included', () async {
+  test('syncNow refreshes every synced list, budgets and accounts included', () async {
     _builds = {};
     Hive.init(Directory.systemTemp.createTempSync().path);
     final boxes = [
-      for (final name in ['t_cat', 't_tx', 't_wish', 't_budget']) await Hive.openBox<Map>(name),
+      for (final name in ['t_cat', 't_tx', 't_wish', 't_budget', 't_account']) await Hive.openBox<Map>(name),
     ];
 
     final container = ProviderContainer(overrides: [
@@ -94,11 +104,13 @@ void main() {
       transactionBoxProvider.overrideWithValue(boxes[1]),
       wishlistBoxProvider.overrideWithValue(boxes[2]),
       budgetsBoxProvider.overrideWithValue(boxes[3]),
+      accountsBoxProvider.overrideWithValue(boxes[4]),
       categoryListProvider.overrideWith(_CountingCategories.new),
       transactionListProvider.overrideWith(_CountingTransactions.new),
       wishlistListProvider.overrideWith(_CountingWishlist.new),
       alertListProvider.overrideWith(_CountingAlerts.new),
       budgetListProvider.overrideWith(_CountingBudgets.new),
+      accountListProvider.overrideWith(_CountingAccounts.new),
     ]);
     addTearDown(() async {
       container.dispose();
@@ -118,6 +130,7 @@ void main() {
     await warm(wishlistListProvider, container.read(wishlistListProvider.future));
     await warm(alertListProvider, container.read(alertListProvider.future));
     await warm(budgetListProvider, container.read(budgetListProvider.future));
+    await warm(accountListProvider, container.read(accountListProvider.future));
     await container.read(syncControllerProvider.future);
     expect(_builds.values, everyElement(1));
 
@@ -130,6 +143,7 @@ void main() {
       'wishlist': 2,
       'alerts': 2,
       'budgets': 2,
+      'accounts': 2,
     });
   });
 }

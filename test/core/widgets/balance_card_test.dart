@@ -92,4 +92,61 @@ void main() {
     expect(find.bySemanticsLabel(label), findsOneWidget);
     semantics.dispose();
   });
+
+  group('accounts strip', () {
+    testWidgets('shows the summary with a Manage link that can be tapped', (tester) async {
+      var opened = 0;
+      await tester.pumpWidget(
+        _app(
+          BalanceCard(
+            balance: 100,
+            monthIncome: 0,
+            monthExpense: 0,
+            accountsSummary: '3 accounts · BCA, DANA, Cash',
+            onManageAccounts: () => opened++,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('3 accounts · BCA, DANA, Cash'), findsOneWidget);
+      expect(find.text('Manage ›'), findsOneWidget);
+
+      await tester.tap(find.text('Manage ›'));
+      expect(opened, 1);
+      await tester.tap(find.text('3 accounts · BCA, DANA, Cash'));
+      expect(opened, 2);
+    });
+
+    testWidgets('is absent without a summary', (tester) async {
+      await tester.pumpWidget(
+        _app(const BalanceCard(balance: 100, monthIncome: 0, monthExpense: 0)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Manage ›'), findsNothing);
+    });
+
+    testWidgets('is exposed to screen readers as a button, apart from the figures', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _app(
+          BalanceCard(
+            balance: 100,
+            monthIncome: 0,
+            monthExpense: 0,
+            accountsSummary: '2 accounts · BCA, Cash',
+            onManageAccounts: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.bySemanticsLabel(RegExp('Manage accounts. 2 accounts')),
+        findsOneWidget,
+      );
+      handle.dispose();
+    });
+  });
 }

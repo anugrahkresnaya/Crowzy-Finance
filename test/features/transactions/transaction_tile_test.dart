@@ -106,4 +106,41 @@ void main() {
 
     expect(find.byTooltip('Delete'), findsNothing);
   });
+
+  testWidgets('adds the account to the line beneath when given one', (tester) async {
+    await pump(
+      tester,
+      TransactionTile(
+        transaction: tx(note: 'Groceries'),
+        category: food,
+        showDate: false,
+        accountLabel: 'BCA',
+      ),
+    );
+
+    expect(find.text('Food · BCA'), findsOneWidget);
+  });
+
+  testWidgets('with no note the account is the whole line beneath the category headline', (tester) async {
+    await pump(
+      tester,
+      TransactionTile(transaction: tx(), category: food, showDate: false, accountLabel: 'DANA'),
+    );
+
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('DANA'), findsOneWidget);
+  });
+
+  testWidgets('the date, category and account are joined in that order', (tester) async {
+    await pump(
+      tester,
+      TransactionTile(
+        transaction: tx(note: 'Lunch'),
+        category: food,
+        accountLabel: 'Cash',
+      ),
+    );
+
+    expect(find.text('Today · Food · Cash'), findsOneWidget);
+  });
 }

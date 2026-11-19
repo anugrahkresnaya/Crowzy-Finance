@@ -28,6 +28,11 @@ import '../../../../data/models/alert_type.dart';
         color: AppColors.expense,
         title: 'Income drop',
       ),
+    AlertType.budgetExceeded => (
+        icon: Icons.speed_rounded,
+        color: AppColors.expense,
+        title: 'Over budget',
+      ),
     AlertType.budgetLimit => (
         icon: Icons.speed_rounded,
         color: AppColors.expense,

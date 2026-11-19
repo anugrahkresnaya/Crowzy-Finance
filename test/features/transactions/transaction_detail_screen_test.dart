@@ -1,5 +1,9 @@
 import 'package:crowzy_finance/core/theme/app_colors.dart';
 import 'package:crowzy_finance/core/theme/app_theme.dart';
+import 'package:crowzy_finance/data/models/account_model.dart';
+import 'package:crowzy_finance/data/models/account_type.dart';
+import 'package:crowzy_finance/features/accounts/providers/account_provider.dart';
+import 'package:crowzy_finance/features/accounts/utils/transfers.dart';
 import 'package:crowzy_finance/data/models/category_model.dart';
 import 'package:crowzy_finance/data/models/transaction_model.dart';
 import 'package:crowzy_finance/data/models/transaction_type.dart';
@@ -12,7 +16,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../support/transfers.dart';
+
 late List<TransactionModel> _transactions;
+List<AccountModel> _accounts = [];
+
+class _FakeAccounts extends AccountList {
+  @override
+  Future<List<AccountModel>> build() async => _accounts;
+}
+
+AccountModel _account(String id, String name) => AccountModel(
+      id: id,
+      userId: 'u1',
+      name: name,
+      type: AccountType.bank,
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
 final List<String> _deleted = [];
 
 class _FakeTransactions extends TransactionList {
@@ -52,6 +73,7 @@ TransactionModel _tx({
   String category = 'food',
   String? note = 'Groceries',
   bool isSynced = true,
+  String? accountId,
 }) =>
     TransactionModel(
       id: id,
@@ -60,6 +82,7 @@ TransactionModel _tx({
       type: type,
       categoryId: category,
       note: note,
+      accountId: accountId,
       date: DateTime(2026, 10, 3), // a Saturday
       createdAt: DateTime(2026, 10, 3, 9, 12),
       updatedAt: DateTime(2026, 10, 3, 9, 12),
@@ -71,6 +94,7 @@ void main() {
 
   setUp(() {
     _transactions = [_tx()];
+    _accounts = [_account('cash', 'Cash'), _account('bca', 'BCA')];
     _deleted.clear();
   });
 
@@ -83,6 +107,9 @@ void main() {
         overrides: [
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
+          accountListProvider.overrideWith(_FakeAccounts.new),
+          lastUsedAccountIdProvider.overrideWithValue(null),
+          mainAccountIdProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
           theme: AppTheme.dark,
@@ -115,6 +142,56 @@ void main() {
     expect(find.text('Food'), findsOneWidget);
     expect(find.text('Sat 3 Oct 2026'), findsOneWidget);
     expect(find.text('THANK YOU FOR TRACKING'), findsOneWidget);
+  });
+
+  testWidgets('names the account, between the category and the date', (tester) async {
+    _transactions = [_tx(accountId: 'bca')];
+    await pump(tester);
+
+    expect(find.text('ACCOUNT'), findsOneWidget);
+    expect(find.text('BCA'), findsOneWidget);
+    final top = tester.getTopLeft(find.text('ACCOUNT')).dy;
+    expect(tester.getTopLeft(find.text('CATEGORY')).dy, lessThan(top));
+    expect(top, lessThan(tester.getTopLeft(find.text('DATE')).dy));
+  });
+
+  testWidgets('a transaction on no account has no account row', (tester) async {
+    await pump(tester);
+
+    expect(find.text('ACCOUNT'), findsNothing);
+  });
+
+  testWidgets('the account row is left out when the account is unknown', (tester) async {
+    _transactions = [_tx(accountId: 'ghost')];
+    await pump(tester);
+
+    expect(find.text('ACCOUNT'), findsNothing);
+  });
+
+  testWidgets('a transfer fee opens its transfer receipt instead, since it reads as part of the transfer', (tester) async {
+    final transfer = fakeTransfer('tr1', from: 'cash', to: 'bca', amount: 500000, fee: 2500, note: 'Top up');
+    _transactions = [...legsOf(transfer), feeOf(transfer, categoryId: 'food')];
+    await pump(tester, id: feeIdFor('tr1'));
+
+    expect(find.text('TRANSACTION RECEIPT'), findsNothing);
+    expect(find.text('TRANSFER RECEIPT'), findsOneWidget);
+    expect(find.text('LEFT CASH'), findsOneWidget);
+  });
+
+  testWidgets('one half of a transfer, with its partner missing, can be deleted but not edited', (tester) async {
+    _transactions = [legsOf(fakeTransfer('lonely', from: 'cash', to: 'bca', amount: 90000)).first];
+    await pump(tester, id: 'lonely-out');
+
+    expect(find.text('Edit'), findsNothing);
+    expect(find.text('Delete'), findsOneWidget);
+    expect(find.textContaining('one half of a transfer'), findsOneWidget);
+  });
+
+  testWidgets('an ordinary transaction has no half-transfer note', (tester) async {
+    await pump(tester);
+
+    expect(find.textContaining('one half of a transfer'), findsNothing);
+    expect(find.text('Edit'), findsOneWidget);
   });
 
   testWidgets('without a note the category is the headline', (tester) async {
@@ -207,6 +284,8 @@ void main() {
         overrides: [
           transactionListProvider.overrideWith(_FakeTransactions.new),
           categoryListProvider.overrideWith(_FakeCategories.new),
+          accountListProvider.overrideWith(_FakeAccounts.new),
+          mainAccountIdProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
           theme: AppTheme.dark,

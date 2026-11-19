@@ -15,6 +15,9 @@ class CategoryRepository {
       ..sort((a, b) => a.name.compareTo(b.name));
   }
 
+  /// Every stored id, soft-deleted rows included.
+  Set<String> allIds() => _box.keys.cast<String>().toSet();
+
   Future<void> save(CategoryModel category) async {
     await _box.put(category.id, category.toJson());
   }

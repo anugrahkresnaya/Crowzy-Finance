@@ -25,7 +25,7 @@ class SelectedReportMonth extends _$SelectedReportMonth {
 @riverpod
 List<TransactionModel> monthTransactions(Ref ref) {
   final month = ref.watch(selectedReportMonthProvider);
-  final all = ref.watch(transactionListProvider).value ?? const [];
+  final all = ref.watch(spendingTransactionsProvider);
   return ref.watch(reportRepositoryProvider).transactionsForMonth(all, month);
 }
 
@@ -39,7 +39,7 @@ MonthlySummary monthSummary(Ref ref) {
 MonthlySummary previousMonthSummary(Ref ref) {
   final month = ref.watch(selectedReportMonthProvider);
   final previousMonth = DateFormatter.previousMonth(month);
-  final all = ref.watch(transactionListProvider).value ?? const [];
+  final all = ref.watch(spendingTransactionsProvider);
   final repository = ref.watch(reportRepositoryProvider);
   return repository.summarize(repository.transactionsForMonth(all, previousMonth));
 }

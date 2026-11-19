@@ -7,6 +7,15 @@ import '../../data/models/transaction_type.dart';
 class DefaultCategories {
   DefaultCategories._();
 
+  /// The two global categories that tag the legs of an account-to-account
+  /// transfer: an income on the destination, an expense on the source. They
+  /// match the rows on the server, and are never offered as an ordinary
+  /// category.
+  static const transferInId = '00000000-0000-4000-8000-000000000013';
+  static const transferOutId = '00000000-0000-4000-8000-000000000014';
+
+  static bool isTransferCategory(String id) => id == transferInId || id == transferOutId;
+
   static const _defaults = <(String id, String name, String icon, TransactionType type)>[
     ('00000000-0000-4000-8000-000000000001', 'Salary', 'work', TransactionType.income),
     ('00000000-0000-4000-8000-000000000002', 'Business', 'store', TransactionType.income),
@@ -20,7 +29,16 @@ class DefaultCategories {
     ('00000000-0000-4000-8000-000000000010', 'Health', 'local_hospital', TransactionType.expense),
     ('00000000-0000-4000-8000-000000000011', 'Education', 'school', TransactionType.expense),
     ('00000000-0000-4000-8000-000000000012', 'Other Expense', 'category', TransactionType.expense),
+    (transferInId, 'Transfer In', 'swap_horiz', TransactionType.income),
+    (transferOutId, 'Transfer Out', 'swap_horiz', TransactionType.expense),
   ];
+
+  /// The defaults whose ids are not in [existingIds], so a default added in a
+  /// later version also reaches installs whose box was seeded long ago.
+  static List<CategoryModel> missingFrom(Iterable<String> existingIds) {
+    final have = existingIds.toSet();
+    return build().where((category) => !have.contains(category.id)).toList();
+  }
 
   static List<CategoryModel> build() {
     final now = DateTime.now();

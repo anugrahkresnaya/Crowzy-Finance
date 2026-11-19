@@ -153,7 +153,7 @@ final class MonthTransactionsProvider
   }
 }
 
-String _$monthTransactionsHash() => r'a3ce507cef0e78a3bddbc9a64d7fe88e3691e406';
+String _$monthTransactionsHash() => r'e274ac3c89945a774faa46293c270045403188b1';
 
 @ProviderFor(monthSummary)
 final monthSummaryProvider = MonthSummaryProvider._();
@@ -236,7 +236,7 @@ final class PreviousMonthSummaryProvider
 }
 
 String _$previousMonthSummaryHash() =>
-    r'253474d288d3ff3eccc3ea0ac2c985c5c61b01f0';
+    r'ab3b55984f9e86318ab544e8df7c8b4aabef80fb';
 
 @ProviderFor(incomeBreakdown)
 final incomeBreakdownProvider = IncomeBreakdownProvider._();

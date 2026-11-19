@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/default_categories.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text.dart';
 import '../../../core/utils/app_page_route.dart';
@@ -105,7 +106,9 @@ class _CategoryListScreenState extends ConsumerState<CategoryListScreen> {
               error: (error, _) => Center(child: Text('Failed to load categories: $error')),
               data: (all) {
                 // Biggest first, so the categories that matter most lead.
-                final categories = all.where((c) => c.type == _type).toList()
+                final categories = all
+                    .where((c) => c.type == _type && !DefaultCategories.isTransferCategory(c.id))
+                    .toList()
                   ..sort((a, b) {
                     final byAmount = (totals[b.id] ?? 0).compareTo(totals[a.id] ?? 0);
                     return byAmount != 0 ? byAmount : a.name.compareTo(b.name);

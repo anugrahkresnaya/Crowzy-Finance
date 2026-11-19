@@ -55,7 +55,7 @@ final class PassiveInsightContextProvider
 }
 
 String _$passiveInsightContextHash() =>
-    r'039bf3de1b4181e43d722893c72387c8e532df3c';
+    r'83d4201302ae2691bd7f2ff88544e68dde8f0eeb';
 
 @ProviderFor(PassiveInsightController)
 final passiveInsightControllerProvider = PassiveInsightControllerProvider._();

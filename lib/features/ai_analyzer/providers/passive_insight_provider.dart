@@ -16,7 +16,7 @@ const _cacheKeyPrefix = 'passive_insight_';
 
 @riverpod
 PassiveInsightContext passiveInsightContext(Ref ref) {
-  final transactions = ref.watch(transactionListProvider).value ?? const [];
+  final transactions = ref.watch(spendingTransactionsProvider);
   final categories = ref.watch(categoryListProvider).value ?? const [];
   return buildPassiveInsightContext(transactions: transactions, categories: categories);
 }

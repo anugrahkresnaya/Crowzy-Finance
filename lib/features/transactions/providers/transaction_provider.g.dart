@@ -169,7 +169,7 @@ final class TransactionListProvider
   TransactionList create() => TransactionList();
 }
 
-String _$transactionListHash() => r'1a82fa459adfee7153e2990763542e63f28895d0';
+String _$transactionListHash() => r'60b5a355a7630894fa39d3e7ab0b55900ff5b650';
 
 abstract class _$TransactionList
     extends $AsyncNotifier<List<TransactionModel>> {
@@ -194,6 +194,52 @@ abstract class _$TransactionList
     element.handleCreate(ref, build);
   }
 }
+
+/// The account the last transaction was added to, so the next one starts there.
+
+@ProviderFor(lastUsedAccountId)
+final lastUsedAccountIdProvider = LastUsedAccountIdProvider._();
+
+/// The account the last transaction was added to, so the next one starts there.
+
+final class LastUsedAccountIdProvider
+    extends $FunctionalProvider<String?, String?, String?>
+    with $Provider<String?> {
+  /// The account the last transaction was added to, so the next one starts there.
+  LastUsedAccountIdProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'lastUsedAccountIdProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$lastUsedAccountIdHash();
+
+  @$internal
+  @override
+  $ProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  String? create(Ref ref) {
+    return lastUsedAccountId(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String?>(value),
+    );
+  }
+}
+
+String _$lastUsedAccountIdHash() => r'd8313e005234bb809172a872ec58121dd32ae489';
 
 @ProviderFor(lastUsedCategoryId)
 final lastUsedCategoryIdProvider = LastUsedCategoryIdFamily._();
@@ -273,10 +319,16 @@ final class LastUsedCategoryIdFamily extends $Family
   String toString() => r'lastUsedCategoryIdProvider';
 }
 
-@ProviderFor(recentTransactions)
-final recentTransactionsProvider = RecentTransactionsProvider._();
+/// Transactions that are spending or earning, which leaves out the two legs
+/// of every transfer. Reports, budgets, summaries and the AI read this.
 
-final class RecentTransactionsProvider
+@ProviderFor(spendingTransactions)
+final spendingTransactionsProvider = SpendingTransactionsProvider._();
+
+/// Transactions that are spending or earning, which leaves out the two legs
+/// of every transfer. Reports, budgets, summaries and the AI read this.
+
+final class SpendingTransactionsProvider
     extends
         $FunctionalProvider<
           List<TransactionModel>,
@@ -284,19 +336,21 @@ final class RecentTransactionsProvider
           List<TransactionModel>
         >
     with $Provider<List<TransactionModel>> {
-  RecentTransactionsProvider._()
+  /// Transactions that are spending or earning, which leaves out the two legs
+  /// of every transfer. Reports, budgets, summaries and the AI read this.
+  SpendingTransactionsProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'recentTransactionsProvider',
+        name: r'spendingTransactionsProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$recentTransactionsHash();
+  String debugGetCreateSourceHash() => _$spendingTransactionsHash();
 
   @$internal
   @override
@@ -306,7 +360,7 @@ final class RecentTransactionsProvider
 
   @override
   List<TransactionModel> create(Ref ref) {
-    return recentTransactions(ref);
+    return spendingTransactions(ref);
   }
 
   /// {@macro riverpod.override_with_value}
@@ -318,15 +372,26 @@ final class RecentTransactionsProvider
   }
 }
 
-String _$recentTransactionsHash() =>
-    r'2832a694e5071ee392e1a19f85b1ee6381911512';
+String _$spendingTransactionsHash() =>
+    r'48713c497dc33fc7355aa274ed93e7828fd0c47f';
+
+/// Everything held across all accounts: initial balances plus every
+/// transaction. A transfer's legs cancel, so it leaves this unchanged (its fee
+/// is an expense and does not).
 
 @ProviderFor(allTimeBalance)
 final allTimeBalanceProvider = AllTimeBalanceProvider._();
 
+/// Everything held across all accounts: initial balances plus every
+/// transaction. A transfer's legs cancel, so it leaves this unchanged (its fee
+/// is an expense and does not).
+
 final class AllTimeBalanceProvider
     extends $FunctionalProvider<double, double, double>
     with $Provider<double> {
+  /// Everything held across all accounts: initial balances plus every
+  /// transaction. A transfer's legs cancel, so it leaves this unchanged (its fee
+  /// is an expense and does not).
   AllTimeBalanceProvider._()
     : super(
         from: null,
@@ -360,7 +425,7 @@ final class AllTimeBalanceProvider
   }
 }
 
-String _$allTimeBalanceHash() => r'30e3b8595fc9396e503468ec211355cec5c4793a';
+String _$allTimeBalanceHash() => r'f004130eea089fdcaf306aede960a032fbf008c8';
 
 @ProviderFor(thisMonthSummary)
 final thisMonthSummaryProvider = ThisMonthSummaryProvider._();
@@ -401,4 +466,4 @@ final class ThisMonthSummaryProvider
   }
 }
 
-String _$thisMonthSummaryHash() => r'a54a3f1030a29c605b9f13be9a2a3ac698dc6529';
+String _$thisMonthSummaryHash() => r'0de6d14c14e4036c1f9aeb5f4a9365d9a12442d3';

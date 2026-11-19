@@ -480,3 +480,44 @@ class _TopRevealClipper extends CustomClipper<Rect> {
   @override
   bool shouldReclip(_TopRevealClipper oldClipper) => oldClipper.fraction != fraction;
 }
+
+/// A bold label and value on one line, for the figures a slip adds up to
+/// (for example what left one account and what reached another).
+class ReceiptSummaryLine extends StatelessWidget {
+  const ReceiptSummaryLine({super.key, required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = ReceiptText.mono(context, size: 15, bold: true);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          const SizedBox(width: 12),
+          Text(value, style: style),
+        ],
+      ),
+    );
+  }
+}
+
+/// The dark slot a full-screen receipt appears to feed out of.
+class ReceiptPrinterSlot extends StatelessWidget {
+  const ReceiptPrinterSlot({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 12,
+      decoration: BoxDecoration(
+        color: AppColors.slot,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.hairline),
+      ),
+    );
+  }
+}

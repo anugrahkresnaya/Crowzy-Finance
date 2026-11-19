@@ -11,6 +11,11 @@ enum AlertType {
   // today (see claude.md's Data Model vs. Trigger Conditions discrepancy).
   @JsonValue('income_drop')
   incomeDrop,
+  // What the server sends when a category goes over its budget.
+  @JsonValue('budget_exceeded')
+  budgetExceeded,
+  // The next three are not produced by the live server; they stay so an alert
+  // of that kind, if one ever appears, still reads.
   @JsonValue('budget_limit')
   budgetLimit,
   @JsonValue('income_received')
