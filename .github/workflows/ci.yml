@@ -14,6 +14,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned to match pubspec.lock; a newer stable pins newer test_api/matcher
+          # than freezed's analyzer range allows, and version solving fails.
+          flutter-version: 3.44.1
           cache: true
 
       - run: flutter pub get
