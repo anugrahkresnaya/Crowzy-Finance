@@ -5,7 +5,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text.dart';
 import '../../../../core/utils/app_page_route.dart';
 import '../../../../core/widgets/press_scale.dart';
-import '../../../../data/models/alert_type.dart';
 import '../../providers/alert_provider.dart';
 import '../alerts_list_screen.dart';
 
@@ -21,15 +20,14 @@ class AlertsCard extends ConsumerWidget {
     if (unread.isEmpty) return const SizedBox.shrink();
 
     final latest = unread.first;
-    final goodNews = latest.type.isGoodNews;
     final textTheme = Theme.of(context).textTheme;
 
     return PressScale(
       child: Material(
-        color: goodNews ? AppColors.hero : AppColors.noticeBackground,
+        color: AppColors.noticeBackground,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: goodNews ? AppColors.heroBorder : AppColors.noticeBorder),
+          side: BorderSide(color: AppColors.noticeBorder),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -41,11 +39,8 @@ class AlertsCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  goodNews ? 'GOOD NEWS' : 'NOTICE',
-                  style: AppText.eyebrow(
-                    context,
-                    color: goodNews ? AppColors.income : AppColors.expense,
-                  ),
+                  'NOTICE',
+                  style: AppText.eyebrow(context, color: AppColors.expense),
                 ),
                 const SizedBox(height: 6),
                 Text(

@@ -205,13 +205,6 @@ void main() {
     expect(find.textContaining('No transactions yet'), findsNothing);
   });
 
-  testWidgets('a good-news alert is introduced as good news rather than a notice', (tester) async {
-    await pumpHome(tester, alerts: [alert(type: AlertType.incomeReceived)]);
-
-    expect(find.text('GOOD NEWS'), findsOneWidget);
-    expect(find.text('NOTICE'), findsNothing);
-  });
-
   testWidgets('tapping a recent transaction opens its receipt', (tester) async {
     await pumpHome(tester, recent: [tx('1', 1000, note: 'One')]);
 

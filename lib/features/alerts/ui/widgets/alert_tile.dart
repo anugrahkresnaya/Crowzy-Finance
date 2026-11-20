@@ -33,21 +33,6 @@ import '../../../../data/models/alert_type.dart';
         color: AppColors.expense,
         title: 'Over budget',
       ),
-    AlertType.budgetLimit => (
-        icon: Icons.speed_rounded,
-        color: AppColors.expense,
-        title: 'Nearing a limit',
-      ),
-    AlertType.incomeReceived => (
-        icon: Icons.arrow_upward_rounded,
-        color: AppColors.income,
-        title: 'Income received',
-      ),
-    AlertType.goalOnTrack => (
-        icon: Icons.flag_outlined,
-        color: AppColors.income,
-        title: 'Goal on track',
-      ),
   };
 }
 
@@ -61,26 +46,13 @@ class AlertTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final visuals = alertVisuals(alert.type);
     final isUnread = alert.isUnread;
-    final goodNews = alert.type.isGoodNews;
     final textTheme = Theme.of(context).textTheme;
 
-    // Unread warnings are tinted burgundy; unread good news takes the calmer
-    // green of the hero cards. Once read, both settle to the plain surface.
-    final Color background = !isUnread
-        ? AppColors.surface
-        : goodNews
-            ? AppColors.hero
-            : AppColors.noticeBackground;
-    final Color border = !isUnread
-        ? AppColors.hairlineSoft
-        : goodNews
-            ? AppColors.heroBorder
-            : AppColors.noticeBorder;
-    final Color iconBackground = !isUnread
-        ? AppColors.surface
-        : goodNews
-            ? AppColors.surfaceHigh
-            : AppColors.noticeIcon;
+    // Unread alerts are tinted burgundy; once read they settle to the plain
+    // surface.
+    final Color background = isUnread ? AppColors.noticeBackground : AppColors.surface;
+    final Color border = isUnread ? AppColors.noticeBorder : AppColors.hairlineSoft;
+    final Color iconBackground = isUnread ? AppColors.noticeIcon : AppColors.surface;
     final Color iconBorder = !isUnread ? AppColors.hairline : border;
 
     return PressScale(
@@ -130,7 +102,7 @@ class AlertTile extends StatelessWidget {
                               width: 7,
                               height: 7,
                               decoration: BoxDecoration(
-                                color: goodNews ? AppColors.income : AppColors.expense,
+                                color: AppColors.expense,
                                 shape: BoxShape.circle,
                               ),
                             ),
