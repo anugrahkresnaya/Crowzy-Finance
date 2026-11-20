@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Pinned to match pubspec.lock; a newer stable pins newer test_api/matcher
+          # than freezed's analyzer range allows, and version solving fails.
+          flutter-version: 3.44.1
+          cache: true
+
+      - run: flutter pub get
+
+      # Generated *.g.dart / *.freezed.dart are committed; fail if they're stale.
+      - name: Verify generated code is up to date
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          git diff --exit-code -- lib
+
+      - run: flutter analyze
+
+      - run: flutter test
